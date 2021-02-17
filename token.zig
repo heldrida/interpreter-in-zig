@@ -1,29 +1,28 @@
-pub const TokenType: []const u8;
+const std = @import("std");
+const print = @import("std").debug.print;
 
 pub const Token = struct {
-    type: []const u8,
-    literal: u8
+  type: Map,
+  literal: Map
 };
 
-pub const ILLEGAL = "ILLEGAL";
-pub const EOF = "EOF";
-
-// Identifiers and literals
-pub const IDENT = "IDENT"; // add, foobar, x, y, ...
-pub const INT = "INT"; // 123456
-
-// Operators
-pub const ASSIGN = "=";
-pub const PLUS = "+";
-
-// Delimiters
-pub const COMMA = ",";
-pub const SEMICOLON = ";";
-pub const LPAREN = "(";
-pub const RPAREN = ")";
-pub const LBRACE = "{";
-pub const RBRACE = "}";
-
-// Keywords
-pub const FUNCTION = "FUNCTION";
-pub const LET = "LET";
+pub const Map = enum(u8) {
+  nul = 0,
+  eof = 4,
+  // Identifiers and literals
+  ident = 9,
+  int = 73,
+  // Operators
+  assign = 61,
+  plus = 43,
+  // Delimiters
+  comma = 44,
+  semicolon = 59,
+  lparen = 40,
+  rparen = 41,
+  lbrace = 123,
+  rbrace = 125,
+  // Keywords
+  function = 70,
+  let = 76
+};
