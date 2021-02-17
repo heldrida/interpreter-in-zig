@@ -2,20 +2,21 @@ const token = @import("token.zig");
 const print = @import("std").debug.print;
 const expect = @import("std").testing.expect;
 const std = @import("std");
+
 const Lexer = struct {
   input: []const u8,
   position: u8 = 0, // current position in input (points to current char)
   readPosition: u8 = 0, // current reading position in input (after current char)
-  ch: u8 = undefined, // current char under examination
+  ch: token.Map = undefined, // current char under examination
   
   pub fn readChar(self: *Lexer) void {
     // Checks if we reached end of input
     // if so sets to 0 (ASCII code for "NUL" char)
     // otherwise, sets `l.ch` to the next char
     if (self.readPosition >= self.input.len) {
-      self.ch = undefined;
+      self.ch = token.Map.nul;
     } else {
-      self.ch = self.input[self.readPosition];
+      self.ch = @intToEnum(token.Map, self.input[self.readPosition]);
     }
 
     self.position = self.readPosition;
@@ -25,58 +26,49 @@ const Lexer = struct {
   pub fn nextToken(self: *Lexer) token.Token {
     var tok: token.Token = undefined;
 
-    // switch (self.ch) {
-    //     std.mem.eql(u8, &arr, token.ASSIGN) => {
-    //       tok = newToken(token.ASSIGN, l.ch);
-    //     },
-    //     token.SEMICOLON => {
-    //       tok = newToken(token.SEMICOLON, l.ch);
-    //     },
-    //     token.LPAREN => {
-    //       tok = newToken(token.LPAREN, l.ch);
-    //     },
-    //     token.RPAREN => {
-    //       tok = newToken(token.RPAREN, l.ch);
-    //     },
-    //     token.COMMA => {
-    //       tok = newToken(token.COMMA, l.ch);
-    //     },
-    //     token.PLUS => {
-    //       tok = newToken(token.PLUS, l.ch);
-    //     },
-    //     token.LBRACE => {
-    //       tok = newToken(token.LBRACE, l.ch);
-    //     },
-    //     token.RBRACE => {
-    //       tok = newToken(token.RBRACE, l.ch);
-    //     },
-    //     0 => {
-    //       tok.Type = token.EOF;
-    //       tok.Literal = "";
-    //     }
-    // }
-
-    const arr = [_]u8{ self.ch };
-
-    if (std.mem.eql(u8, &arr, token.ASSIGN)) {
-      tok = newToken(token.ASSIGN, self.ch); 
-    } else if (std.mem.eql(u8, &arr, token.SEMICOLON)) {
-      tok = newToken(token.SEMICOLON, self.ch);
-    } else if (std.mem.eql(u8, &arr, token.LPAREN)) {
-      tok = newToken(token.LPAREN, self.ch);
-    } else if (std.mem.eql(u8, &arr, token.RPAREN)) {
-      tok = newToken(token.RPAREN, self.ch);
-    } else if (std.mem.eql(u8, &arr, token.COMMA)) {
-      tok = newToken(token.COMMA, self.ch);
-    } else if (std.mem.eql(u8, &arr, token.PLUS)) {
-      tok = newToken(token.PLUS, self.ch);
-    } else if (std.mem.eql(u8, &arr, token.LBRACE)) {
-      tok = newToken(token.LBRACE, self.ch);
-    } else if (std.mem.eql(u8, &arr, token.RBRACE)) {
-      tok = newToken(token.RBRACE, self.ch);
-    } else {
-      tok.type = token.EOF;
-      tok.literal = undefined;
+    switch (self.ch) {
+      token.Map.ident => {
+        tok = newToken(token.Map.ident, self.ch);
+      },
+      token.Map.int => {
+        tok = newToken(token.Map.int, self.ch);
+      },
+      token.Map.assign => {
+        tok = newToken(token.Map.assign, self.ch);
+      },
+      token.Map.plus => {
+        tok = newToken(token.Map.plus, self.ch);
+      },
+      token.Map.semicolon => {
+        tok = newToken(token.Map.semicolon, self.ch);
+      },
+      token.Map.lparen => {
+        tok = newToken(token.Map.lparen, self.ch);
+      },
+      token.Map.rparen => {
+        tok = newToken(token.Map.rparen, self.ch);
+      },
+      token.Map.comma => {
+        tok = newToken(token.Map.comma, self.ch);
+      },
+      token.Map.lbrace => {
+        tok = newToken(token.Map.lbrace, self.ch);
+      },
+      token.Map.rbrace => {
+        tok = newToken(token.Map.rbrace, self.ch);
+      },
+      token.Map.function => {
+        tok = newToken(token.Map.function, self.ch);
+      },
+      token.Map.let => {
+        tok = newToken(token.Map.let, self.ch);
+      },
+      token.Map.eof => {
+        tok = newToken(token.Map.eof, self.ch);
+      },
+      token.Map.nul => {
+        tok = newToken(token.Map.nul, self.ch);
+      }
     }
 
     self.readChar();
@@ -84,7 +76,7 @@ const Lexer = struct {
     return tok;
   }
 
-  pub fn newToken(tokenType: []const u8, ch: u8) token.Token {
+  pub fn newToken(tokenType: token.Map, ch: token.Map) token.Token {
     return token.Token{
       .type = tokenType,
       .literal = ch
@@ -102,17 +94,17 @@ pub fn new(input: []const u8) Lexer {
 
 test "struct usage" {
     const l = Lexer {
-      .input = "foobar"
+      .input = "var foobar = 5;"
     };
 }
 
 test "imports token" {
-  expect(token.ASSIGN == "=");
-  expect(token.PLUS == "+");
-  expect(token.FUNCTION == "FUNCTION");
+  expect(token.Map.assign == @intToEnum(token.Map, '='));
+  expect(token.Map.semicolon == @intToEnum(token.Map, ';'));
+  expect(token.Map.plus == @intToEnum(token.Map, '+'));
 }
 
-test "next token" {
+test "next token\n" {
   const input = "=+(){},;";
 
   var l = new(input);
@@ -121,50 +113,50 @@ test "next token" {
   l.readChar();
 
   const expectedType = struct {
-      expectedType: []const u8,
-      expectedLiteral: []const u8
+      expectedType: token.Map,
+      expectedLiteral: u8
   };
   const tests = [_]expectedType {
     .{
-      .expectedType = token.ASSIGN,
-      .expectedLiteral = "="
+      .expectedType = token.Map.assign,
+      .expectedLiteral = '='
     },
     .{
-      .expectedType = token.PLUS,
-      .expectedLiteral = "+"
+      .expectedType = token.Map.plus,
+      .expectedLiteral = '+'
     },
     .{
-      .expectedType = token.LPAREN,
-      .expectedLiteral = "("
+      .expectedType = token.Map.lparen,
+      .expectedLiteral = '('
     },
     .{
-      .expectedType = token.RPAREN,
-      .expectedLiteral = ")"
+      .expectedType = token.Map.rparen,
+      .expectedLiteral = ')'
     },
     .{
-      .expectedType = token.LBRACE,
-      .expectedLiteral = "{"
+      .expectedType = token.Map.lbrace,
+      .expectedLiteral = '{'
     },
     .{
-      .expectedType = token.RBRACE,
-      .expectedLiteral = "}"
+      .expectedType = token.Map.rbrace,
+      .expectedLiteral = '}'
     },
     .{
-      .expectedType = token.COMMA,
-      .expectedLiteral = ","
+      .expectedType = token.Map.comma,
+      .expectedLiteral = ','
     },
     .{
-      .expectedType = token.SEMICOLON,
-      .expectedLiteral = ";"
+      .expectedType = token.Map.semicolon,
+      .expectedLiteral = ';'
     },
     .{
-      .expectedType = token.EOF,
-      .expectedLiteral = ""
+      .expectedType = token.Map.nul,
+      .expectedLiteral = ""[0]
     }
   };
 
   for (tests) |field| {
     const tok = l.nextToken();
-    expect(std.mem.eql(u8, tok.type, field.expectedType) == true);
+    expect(tok.type == field.expectedType);
   }
 }
