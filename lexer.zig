@@ -16,6 +16,7 @@ const Lexer = struct {
     if (self.readPosition >= self.input.len) {
       self.ch = token.Map.nul;
     } else {
+      print("readChar: {c}\n", .{ self.input[self.readPosition] });
       self.ch = @intToEnum(token.Map, self.input[self.readPosition]);
     }
 
@@ -114,49 +115,53 @@ test "next token\n" {
 
   const expectedType = struct {
       expectedType: token.Map,
-      expectedLiteral: u8
+      expectedLiteral: []const u8
   };
   const tests = [_]expectedType {
     .{
       .expectedType = token.Map.assign,
-      .expectedLiteral = '='
+      .expectedLiteral = "="
     },
     .{
       .expectedType = token.Map.plus,
-      .expectedLiteral = '+'
+      .expectedLiteral = "+"
     },
     .{
       .expectedType = token.Map.lparen,
-      .expectedLiteral = '('
+      .expectedLiteral = "("
     },
     .{
       .expectedType = token.Map.rparen,
-      .expectedLiteral = ')'
+      .expectedLiteral = ")"
     },
     .{
       .expectedType = token.Map.lbrace,
-      .expectedLiteral = '{'
+      .expectedLiteral = "{"
     },
     .{
       .expectedType = token.Map.rbrace,
-      .expectedLiteral = '}'
+      .expectedLiteral = "}"
     },
     .{
       .expectedType = token.Map.comma,
-      .expectedLiteral = ','
+      .expectedLiteral = ","
     },
     .{
       .expectedType = token.Map.semicolon,
-      .expectedLiteral = ';'
+      .expectedLiteral = ";"
     },
     .{
       .expectedType = token.Map.nul,
-      .expectedLiteral = ""[0]
+      .expectedLiteral = ""
     }
   };
 
   for (tests) |field| {
     const tok = l.nextToken();
+    // expect(tok.type == field.expectedType);
+    // const arr = &[_]tok.literal[0..];
+    // expect(std.mem.eql(u8, tok.literal[0..], field.expectedLiteral) == true);
+    // print("{s}\n", .{ @enumToInt(tok.type) });
     expect(tok.type == field.expectedType);
   }
 }
