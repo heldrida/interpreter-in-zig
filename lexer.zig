@@ -38,9 +38,7 @@ const Lexer = struct {
       
       self.literal = self.input[self.position..self.readPosition];
 
-      if (std.mem.eql(u8, self.literal, "let")) {
-        self.ch = TokenMap.let;
-      }
+      self.ch = literalToChar(self.literal);
     } else {
       self.ch = @intToEnum(TokenMap, self.input[self.readPosition]);
       self.literal = &[_]u8 { @enumToInt(self.ch) };
@@ -61,6 +59,18 @@ const Lexer = struct {
   fn nextToken(self: *Lexer) Token {
     const tk: Token = self.readChar();
     return tk;
+  }
+
+  fn literalToChar(literal: []const u8) TokenMap {
+    var ch: TokenMap = undefined;
+
+    if (std.mem.eql(u8, literal, "let")) {
+      ch = TokenMap.let;
+    } else {
+      ch = @intToEnum(TokenMap, literal[0]);
+    }
+
+    return ch;
   }
 
   fn init(self: *Lexer, input: []const u8) void {
