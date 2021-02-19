@@ -1,7 +1,11 @@
-const token = @import("token.zig");
 const print = @import("std").debug.print;
 const expect = @import("std").testing.expect;
 const std = @import("std");
+const token = @import("token.zig");
+
+// Types
+const Token = token.Token;
+const TokenMap = token.TokenMap;
 
 const Lexer = struct {
   input: []const u8,
@@ -10,14 +14,17 @@ const Lexer = struct {
   // current reading position in input (after current char)
   readPosition: u8,
   // current char under examination
-  ch: token.Map,
+  ch: TokenMap,
+  // current literal
+  literal: []const u8,
   
   // Checks if we reached end of input
   // if so sets to 0 (ASCII code for "NUL" char)
   // otherwise, sets `l.ch` to the next char
-  fn readChar(self: *Lexer) void {
+  fn readChar(self: *Lexer) Token {
     if (self.readPosition >= self.input.len) {
-      self.ch = token.Map.nul;
+      self.ch = TokenMap.nul;
+      self.literal = &[_]u8 { @enumToInt(self.ch) };
     } else if (isLetter(self.input[self.readPosition])) {
       var i: u8 = self.readPosition;
 
@@ -28,107 +35,52 @@ const Lexer = struct {
           break;
         }
       }
+      
+      self.literal = self.input[self.position..self.readPosition];
 
-      if (std.mem.eql(u8, self.input[self.position..self.readPosition], "let")) {
-        self.ch = token.Map.let;
+      if (std.mem.eql(u8, self.literal, "let")) {
+        self.ch = TokenMap.let;
       }
-
-      return;
     } else {
-      self.ch = @intToEnum(token.Map, self.input[self.readPosition]);
+      self.ch = @intToEnum(TokenMap, self.input[self.readPosition]);
+      self.literal = &[_]u8 { @enumToInt(self.ch) };
+      self.position = self.readPosition;
+      self.readPosition += 1;
     }
 
-    self.position = self.readPosition;
-    self.readPosition += 1;
+    return Token {
+      .type = self.ch,
+      .literal = self.literal
+    };
   }
 
   fn isLetter(ch: u8) bool {
     return (ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'B');
   }
 
-  fn nextToken(self: *Lexer) token.Token {
-    var tok: token.Token = undefined;
-
-    if (isLetter(@enumToInt(self.ch))) {
-      tok = newToken(token.Map.nul, self.ch);
-      return tok;
-    }
-
-    switch (self.ch) {
-      token.Map.ident => {
-        tok = newToken(token.Map.ident, self.ch);
-      },
-      token.Map.int => {
-        tok = newToken(token.Map.int, self.ch);
-      },
-      token.Map.assign => {
-        tok = newToken(token.Map.assign, self.ch);
-      },
-      token.Map.plus => {
-        tok = newToken(token.Map.plus, self.ch);
-      },
-      token.Map.semicolon => {
-        tok = newToken(token.Map.semicolon, self.ch);
-      },
-      token.Map.lparen => {
-        tok = newToken(token.Map.lparen, self.ch);
-      },
-      token.Map.rparen => {
-        tok = newToken(token.Map.rparen, self.ch);
-      },
-      token.Map.comma => {
-        tok = newToken(token.Map.comma, self.ch);
-      },
-      token.Map.lbrace => {
-        tok = newToken(token.Map.lbrace, self.ch);
-      },
-      token.Map.rbrace => {
-        tok = newToken(token.Map.rbrace, self.ch);
-      },
-      token.Map.function => {
-        tok = newToken(token.Map.function, self.ch);
-      },
-      token.Map.let => {
-        tok = newToken(token.Map.let, self.ch);
-      },
-      token.Map.eof => {
-        tok = newToken(token.Map.eof, self.ch);
-      },
-      token.Map.nul => {
-        tok = newToken(token.Map.nul, self.ch);
-      }
-    }
-
-    self.readChar();
-
-    return tok;
+  fn nextToken(self: *Lexer) Token {
+    const tk: Token = self.readChar();
+    return tk;
   }
 
-  fn newToken(tokenType: token.Map, ch: token.Map) token.Token {
-    return token.Token{
-      .type = tokenType,
-      .literal = ch
-    };
-  }
-
-  fn init(self: *Lexer, input: []const u8, position: u8, readPosition: u8) void {
+  fn init(self: *Lexer, input: []const u8) void {
     self.input = input;
-    self.position = position;
-    self.readPosition = readPosition;
-    self.ch = @intToEnum(token.Map, self.input[self.position]);    
+    self.position = 0;
+    self.readPosition = 0;
+    self.ch = @intToEnum(TokenMap, self.input[self.position]);    
   }
 
   fn create(allocator: *std.mem.Allocator, input: []const u8) !*Lexer {
     var l = try allocator.create(Lexer);
 
     // Initialisation
-    l.init(input, 0, 1);
+    l.init(input);
 
     return l;
   }
 };
 
-test "Verifies token types" {
+test "Verifies token types\n" {
   const input: []const u8 = "=+let(){},;";
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -139,48 +91,48 @@ test "Verifies token types" {
   var l = try Lexer.create(allocator, input);
 
   const expectedType = struct {
-      expectedType: token.Map,
+      expectedType: TokenMap,
       expectedLiteral: []const u8
   };
   const testCases = [_]expectedType {
     .{
-      .expectedType = token.Map.assign,
+      .expectedType = TokenMap.assign,
       .expectedLiteral = "="
     },
     .{
-      .expectedType = token.Map.plus,
+      .expectedType = TokenMap.plus,
       .expectedLiteral = "+"
     },
     .{
-      .expectedType = token.Map.let,
+      .expectedType = TokenMap.let,
       .expectedLiteral = "let"
     },
     .{
-      .expectedType = token.Map.lparen,
+      .expectedType = TokenMap.lparen,
       .expectedLiteral = "("
     },
     .{
-      .expectedType = token.Map.rparen,
+      .expectedType = TokenMap.rparen,
       .expectedLiteral = ")"
     },
     .{
-      .expectedType = token.Map.lbrace,
+      .expectedType = TokenMap.lbrace,
       .expectedLiteral = "{"
     },
     .{
-      .expectedType = token.Map.rbrace,
+      .expectedType = TokenMap.rbrace,
       .expectedLiteral = "}"
     },
     .{
-      .expectedType = token.Map.comma,
+      .expectedType = TokenMap.comma,
       .expectedLiteral = ","
     },
     .{
-      .expectedType = token.Map.semicolon,
+      .expectedType = TokenMap.semicolon,
       .expectedLiteral = ";"
     },
     .{
-      .expectedType = token.Map.nul,
+      .expectedType = TokenMap.nul,
       .expectedLiteral = ""
     }
   };
