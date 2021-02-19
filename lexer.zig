@@ -6,6 +6,10 @@ const token = @import("token.zig");
 // Types
 const Token = token.Token;
 const TokenMap = token.TokenMap;
+const WordRange = struct {
+  start: u8,
+  end: u8
+};
 
 const Lexer = struct {
   input: []const u8,
@@ -23,25 +27,31 @@ const Lexer = struct {
   // otherwise, sets `l.ch` to the next char
   fn readChar(self: *Lexer) Token {
     if (self.readPosition >= self.input.len) {
+      // Update character (set Nul)
       self.ch = TokenMap.nul;
+
+      // Update literal
       self.literal = &[_]u8 { @enumToInt(self.ch) };
     } else if (isLetter(self.input[self.readPosition])) {
-      var i: u8 = self.readPosition;
+      // Find the word range
+      const wr = self.getWordRange(self.readPosition);
 
-      while (i < self.input[self.readPosition..].len): (i += 1) {
-        if (!isLetter(self.input[i])) {
-          self.position = self.readPosition;
-          self.readPosition = i;
-          break;
-        }
-      }
-      
-      self.literal = self.input[self.position..self.readPosition];
+      // Update positions      
+      self.updatePosition(wr);
 
+      // Update literal
+      self.literal = self.input[wr.start..wr.end];
+
+      // Update character
       self.ch = literalToChar(self.literal);
     } else {
+      // Update character
       self.ch = @intToEnum(TokenMap, self.input[self.readPosition]);
+
+      // Update literal
       self.literal = &[_]u8 { @enumToInt(self.ch) };
+
+      // Update positions
       self.position = self.readPosition;
       self.readPosition += 1;
     }
@@ -49,6 +59,24 @@ const Lexer = struct {
     return Token {
       .type = self.ch,
       .literal = self.literal
+    };
+  }
+  
+  fn getWordRange(self: *Lexer, startPos: u8) WordRange {
+    var i: u8 = startPos;
+
+    while (i < startPos + self.input[startPos..].len): (i += 1) {
+      if (!isLetter(self.input[i])) {
+        return WordRange {
+          .start = startPos,
+          .end = i
+        };
+      }
+    }
+
+    return WordRange {
+      .start = startPos,
+      .end = 0
     };
   }
 
@@ -73,11 +101,15 @@ const Lexer = struct {
     return ch;
   }
 
+  fn updatePosition(self: *Lexer, wr: WordRange) void {
+    self.position = wr.start;
+    self.readPosition = wr.end;
+  }
+
   fn init(self: *Lexer, input: []const u8) void {
     self.input = input;
     self.position = 0;
     self.readPosition = 0;
-    self.ch = @intToEnum(TokenMap, self.input[self.position]);    
   }
 
   fn create(allocator: *std.mem.Allocator, input: []const u8) !*Lexer {
@@ -90,8 +122,25 @@ const Lexer = struct {
   }
 };
 
+test "Gets correct word range\n" {
+  const input: []const u8 = "let{let!";
+
+  var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+  defer arena.deinit();
+
+  const allocator = &arena.allocator;
+
+  var l = try Lexer.create(allocator, input);
+  
+  const wrFirst = l.getWordRange(0);
+  const wrSecond = l.getWordRange(4);
+
+  expect(wrFirst.start == 0 and wrFirst.end == 3);
+  expect(wrSecond.start == 4 and wrSecond.end == 7);
+}
+
 test "Verifies token types\n" {
-  const input: []const u8 = "=+let(){},;";
+  const input: []const u8 = "let=+let(){},;";
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
   defer arena.deinit();
@@ -105,6 +154,10 @@ test "Verifies token types\n" {
       expectedLiteral: []const u8
   };
   const testCases = [_]expectedType {
+    .{
+      .expectedType = TokenMap.let,
+      .expectedLiteral = "let"
+    },
     .{
       .expectedType = TokenMap.assign,
       .expectedLiteral = "="
@@ -148,8 +201,10 @@ test "Verifies token types\n" {
   };
 
   for (testCases) |field| {
+    // Get next token
     const tok = l.nextToken();
 
+    // Assertion
     expect(tok.type == field.expectedType);
   }
 }
