@@ -2,11 +2,11 @@ const std = @import("std");
 const print = @import("std").debug.print;
 
 pub const Token = struct {
-  type: Map,
-  literal: Map
+  type: TokenMap,
+  literal: []const u8
 };
 
-pub const Map = enum(u8) {
+pub const TokenMap = enum(u8) {
   nul = 0,
   eof = 4,
   // Identifiers and literals
