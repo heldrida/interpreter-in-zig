@@ -5,18 +5,36 @@ const std = @import("std");
 
 const Lexer = struct {
   input: []const u8,
-  position: u8 = 0, // current position in input (points to current char)
-  readPosition: u8 = 0, // current reading position in input (after current char)
-  ch: token.Map = undefined, // current char under examination
+  // current position in input (points to current char)
+  position: u8,
+  // current reading position in input (after current char)
+  readPosition: u8,
+  // current char under examination
+  ch: token.Map,
   
-  pub fn readChar(self: *Lexer) void {
-    // Checks if we reached end of input
-    // if so sets to 0 (ASCII code for "NUL" char)
-    // otherwise, sets `l.ch` to the next char
+  // Checks if we reached end of input
+  // if so sets to 0 (ASCII code for "NUL" char)
+  // otherwise, sets `l.ch` to the next char
+  fn readChar(self: *Lexer) void {
     if (self.readPosition >= self.input.len) {
       self.ch = token.Map.nul;
+    } else if (isLetter(self.input[self.readPosition])) {
+      var i: u8 = self.readPosition;
+
+      while (i < self.input[self.readPosition..].len): (i += 1) {
+        if (!isLetter(self.input[i])) {
+          self.position = self.readPosition;
+          self.readPosition = i;
+          break;
+        }
+      }
+
+      if (std.mem.eql(u8, self.input[self.position..self.readPosition], "let")) {
+        self.ch = token.Map.let;
+      }
+
+      return;
     } else {
-      print("readChar: {c}\n", .{ self.input[self.readPosition] });
       self.ch = @intToEnum(token.Map, self.input[self.readPosition]);
     }
 
@@ -24,8 +42,17 @@ const Lexer = struct {
     self.readPosition += 1;
   }
 
-  pub fn nextToken(self: *Lexer) token.Token {
+  fn isLetter(ch: u8) bool {
+    return (ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'B');
+  }
+
+  fn nextToken(self: *Lexer) token.Token {
     var tok: token.Token = undefined;
+
+    if (isLetter(@enumToInt(self.ch))) {
+      tok = newToken(token.Map.nul, self.ch);
+      return tok;
+    }
 
     switch (self.ch) {
       token.Map.ident => {
@@ -77,47 +104,45 @@ const Lexer = struct {
     return tok;
   }
 
-  pub fn newToken(tokenType: token.Map, ch: token.Map) token.Token {
+  fn newToken(tokenType: token.Map, ch: token.Map) token.Token {
     return token.Token{
       .type = tokenType,
       .literal = ch
     };
   }
+
+  fn init(self: *Lexer, input: []const u8, position: u8, readPosition: u8) void {
+    self.input = input;
+    self.position = position;
+    self.readPosition = readPosition;
+    self.ch = @intToEnum(token.Map, self.input[self.position]);    
+  }
+
+  fn create(allocator: *std.mem.Allocator, input: []const u8) !*Lexer {
+    var l = try allocator.create(Lexer);
+
+    // Initialisation
+    l.init(input, 0, 1);
+
+    return l;
+  }
 };
 
-pub fn new(input: []const u8) Lexer {
-  const l = Lexer {
-    .input = input
-  };
+test "Verifies token types" {
+  const input: []const u8 = "=+let(){},;";
 
-  return l;
-}
+  var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+  defer arena.deinit();
 
-test "struct usage" {
-    const l = Lexer {
-      .input = "var foobar = 5;"
-    };
-}
+  const allocator = &arena.allocator;
 
-test "imports token" {
-  expect(token.Map.assign == @intToEnum(token.Map, '='));
-  expect(token.Map.semicolon == @intToEnum(token.Map, ';'));
-  expect(token.Map.plus == @intToEnum(token.Map, '+'));
-}
-
-test "next token\n" {
-  const input = "=+(){},;";
-
-  var l = new(input);
-
-  // Initialisation (ch, position, readPosition)
-  l.readChar();
+  var l = try Lexer.create(allocator, input);
 
   const expectedType = struct {
       expectedType: token.Map,
       expectedLiteral: []const u8
   };
-  const tests = [_]expectedType {
+  const testCases = [_]expectedType {
     .{
       .expectedType = token.Map.assign,
       .expectedLiteral = "="
@@ -125,6 +150,10 @@ test "next token\n" {
     .{
       .expectedType = token.Map.plus,
       .expectedLiteral = "+"
+    },
+    .{
+      .expectedType = token.Map.let,
+      .expectedLiteral = "let"
     },
     .{
       .expectedType = token.Map.lparen,
@@ -156,12 +185,9 @@ test "next token\n" {
     }
   };
 
-  for (tests) |field| {
+  for (testCases) |field| {
     const tok = l.nextToken();
-    // expect(tok.type == field.expectedType);
-    // const arr = &[_]tok.literal[0..];
-    // expect(std.mem.eql(u8, tok.literal[0..], field.expectedLiteral) == true);
-    // print("{s}\n", .{ @enumToInt(tok.type) });
+
     expect(tok.type == field.expectedType);
   }
 }
