@@ -1,5 +1,4 @@
 const std = @import("std");
-const print = @import("std").debug.print;
 
 pub const Token = struct {
   type: TokenMap,
