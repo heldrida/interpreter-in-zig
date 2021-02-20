@@ -10,7 +10,7 @@ pub const TokenMap = enum(u8) {
   eof = 4,
   // Identifiers and literals
   ident = 9,
-  int = 73,
+  int = 48,
   // Operators
   assign = 61,
   plus = 43,
