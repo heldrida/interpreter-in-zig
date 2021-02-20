@@ -26,9 +26,9 @@ const Lexer = struct {
   // if so sets to 0 (ASCII code for "NUL" char)
   // otherwise, sets `l.ch` to the next char
   fn readChar(self: *Lexer) Token {
-    if (self.readPosition >= self.input.len) {
-      // Update character (set Nul)
-      self.ch = TokenMap.nul;
+    if (self.readPosition >= self.charCount()) {
+      // Update character (set EOF)
+      self.ch = TokenMap.eof;
 
       // Update literal
       self.literal = "";
@@ -121,11 +121,25 @@ const Lexer = struct {
 
     if (std.mem.eql(u8, literal, "let")) {
       ch = TokenMap.let;
+    } else if (std.mem.eql(u8, literal, "fn")) {
+      ch = TokenMap.function;
     } else {
       ch = TokenMap.ident;
     }
 
     return ch;
+  }
+
+  fn charCount(self: *Lexer) u8 {
+    var count: u8 = 0;
+
+    for (self.input) |ch| {
+      if (!isWhiteSpace(ch)) {
+        count += 1;
+      }
+    }
+
+    return count;
   }
 
   fn updatePosition(self: *Lexer, wr: WordRange) void {
@@ -170,6 +184,11 @@ test "Verifies token types\n" {
   const input: []const u8 =
     \\ let five = 5;
     \\ let three = 3;
+    \\ let add = fn(x, y) {
+    \\   x + y;
+    \\ };
+    \\
+    \\ let result = add(five, ten);
   ;
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -223,7 +242,75 @@ test "Verifies token types\n" {
     .{
       .expectedType = TokenMap.semicolon,
       .expectedLiteral = ";"
-    }
+    },
+    .{
+      .expectedType = TokenMap.let,
+      .expectedLiteral = "let"
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "add"
+    },
+    .{
+      .expectedType = TokenMap.assign,
+      .expectedLiteral = "="
+    },
+    .{
+      .expectedType = TokenMap.function,
+      .expectedLiteral = "fn"
+    },
+    .{
+      .expectedType = TokenMap.lparen,
+      .expectedLiteral = "("
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "x"
+    },
+    .{
+      .expectedType = TokenMap.comma,
+      .expectedLiteral = ","
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "y"
+    },
+    .{
+      .expectedType = TokenMap.rparen,
+      .expectedLiteral = ")"
+    },
+    .{
+      .expectedType = TokenMap.lbrace,
+      .expectedLiteral = "{"
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "x"
+    },
+    .{
+      .expectedType = TokenMap.plus,
+      .expectedLiteral = "+"
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "y"
+    },
+    .{
+      .expectedType = TokenMap.semicolon,
+      .expectedLiteral = ";"
+    },
+    .{
+      .expectedType = TokenMap.rbrace,
+      .expectedLiteral = "}"
+    },
+    .{
+      .expectedType = TokenMap.semicolon,
+      .expectedLiteral = ";"
+    },
+    .{
+      .expectedType = TokenMap.eof,
+      .expectedLiteral = ""
+    },
   };
 
   for (testCases) |field| {
