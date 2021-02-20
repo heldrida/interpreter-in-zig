@@ -31,7 +31,7 @@ const Lexer = struct {
       self.ch = TokenMap.nul;
 
       // Update literal
-      self.literal = &[_]u8 { @enumToInt(self.ch) };
+      self.literal = "";
     } else if (isLetter(self.input[self.readPosition])) {
       // Find the word range
       const wr = self.getWordRange(self.readPosition);
@@ -44,22 +44,41 @@ const Lexer = struct {
 
       // Update character
       self.ch = literalToChar(self.literal);
+    } else if (isDigit(self.input[self.readPosition])) {
+      // Update character
+      self.ch = TokenMap.int;
+
+      // Update literal
+      self.literal = self.input[self.readPosition..self.readPosition+1];
+
+      // Update positions
+      self.position = self.readPosition;
+      self.readPosition += 1;
+    } else if (isWhiteSpace(self.input[self.readPosition])) {
+      // Update positions
+      self.position = self.readPosition;
+      self.readPosition += 1;
+
+      // Skip to next
+      return self.readChar();
     } else {
       // Update character
       self.ch = @intToEnum(TokenMap, self.input[self.readPosition]);
 
       // Update literal
-      self.literal = &[_]u8 { @enumToInt(self.ch) };
+      self.literal = self.input[self.readPosition..self.readPosition+1];
 
       // Update positions
       self.position = self.readPosition;
       self.readPosition += 1;
     }
 
-    return Token {
+    const tk = Token {
       .type = self.ch,
       .literal = self.literal
     };
+
+    return tk;
   }
   
   fn getWordRange(self: *Lexer, startPos: u8) WordRange {
@@ -84,6 +103,14 @@ const Lexer = struct {
     return (ch >= 'a' and ch <= 'z') or (ch >= 'A' and ch <= 'B');
   }
 
+  fn isDigit(ch: u8) bool {
+    return ch >= '0' and ch <= '9';
+  }
+
+  fn isWhiteSpace(ch: u8) bool {
+    return ch == ' ' or ch == '\t' or ch == '\n' or ch == '\r';
+  }
+
   fn nextToken(self: *Lexer) Token {
     const tk: Token = self.readChar();
     return tk;
@@ -95,7 +122,7 @@ const Lexer = struct {
     if (std.mem.eql(u8, literal, "let")) {
       ch = TokenMap.let;
     } else {
-      ch = @intToEnum(TokenMap, literal[0]);
+      ch = TokenMap.ident;
     }
 
     return ch;
@@ -140,7 +167,10 @@ test "Gets correct word range\n" {
 }
 
 test "Verifies token types\n" {
-  const input: []const u8 = "let=+let(){},;";
+  const input: []const u8 =
+    \\ let five = 5;
+    \\ let three = 3;
+  ;
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
   defer arena.deinit();
@@ -159,44 +189,40 @@ test "Verifies token types\n" {
       .expectedLiteral = "let"
     },
     .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "five"
+    },
+    .{
       .expectedType = TokenMap.assign,
       .expectedLiteral = "="
     },
     .{
-      .expectedType = TokenMap.plus,
-      .expectedLiteral = "+"
-    },
-    .{
-      .expectedType = TokenMap.let,
-      .expectedLiteral = "let"
-    },
-    .{
-      .expectedType = TokenMap.lparen,
-      .expectedLiteral = "("
-    },
-    .{
-      .expectedType = TokenMap.rparen,
-      .expectedLiteral = ")"
-    },
-    .{
-      .expectedType = TokenMap.lbrace,
-      .expectedLiteral = "{"
-    },
-    .{
-      .expectedType = TokenMap.rbrace,
-      .expectedLiteral = "}"
-    },
-    .{
-      .expectedType = TokenMap.comma,
-      .expectedLiteral = ","
+      .expectedType = TokenMap.int,
+      .expectedLiteral = "5"
     },
     .{
       .expectedType = TokenMap.semicolon,
       .expectedLiteral = ";"
     },
     .{
-      .expectedType = TokenMap.nul,
-      .expectedLiteral = ""
+      .expectedType = TokenMap.let,
+      .expectedLiteral = "let"
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "three"
+    },
+    .{
+      .expectedType = TokenMap.assign,
+      .expectedLiteral = "="
+    },
+    .{
+      .expectedType = TokenMap.int,
+      .expectedLiteral = "3"
+    },
+    .{
+      .expectedType = TokenMap.semicolon,
+      .expectedLiteral = ";"
     }
   };
 
