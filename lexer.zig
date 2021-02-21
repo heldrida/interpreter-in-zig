@@ -12,6 +12,9 @@ const WordRange = struct {
 };
 
 const Lexer = struct {
+  // allocator
+  allocator: *std.mem.Allocator,
+  // input
   input: []const u8,
   // current position in input (points to current char)
   position: u8,
@@ -26,7 +29,7 @@ const Lexer = struct {
   // if so sets to 0 (ASCII code for "NUL" char)
   // otherwise, sets `l.ch` to the next char
   fn readChar(self: *Lexer) Token {
-    if (self.readPosition >= self.charCount()) {
+    if (self.readPosition >= self.input.len) {
       // Update character (set EOF)
       self.ch = TokenMap.eof;
 
@@ -43,7 +46,7 @@ const Lexer = struct {
       self.literal = self.input[wr.start..wr.end];
 
       // Update character
-      self.ch = self.literalToChar(self.literal);      
+      self.ch = self.literalToChar(self.literal) catch TokenMap.nul;
     } else if (isDigit(self.input[self.readPosition])) {
       // Update character
       self.ch = TokenMap.int;
@@ -116,10 +119,14 @@ const Lexer = struct {
     return tk;
   }
 
-  fn literalToChar(self: *Lexer, literal: []const u8) TokenMap {
+  fn literalToChar(self: *Lexer, literal: []const u8) !TokenMap {
     var ch: TokenMap = undefined;
 
-    if (std.meta.stringToEnum(TokenMap, self.literal)) |char| {
+    // Some keywords might clash with Zig syntax
+    // for that reason we prefixed our keywords with a `_`
+    const prefixed = try std.mem.concat(self.allocator, u8, &[_][]const u8{ "_", literal });
+
+    if (std.meta.stringToEnum(TokenMap, prefixed)) |char| {
       ch = char;
     } else {
       ch = TokenMap.ident;
@@ -128,34 +135,13 @@ const Lexer = struct {
     return ch;
   }
 
-  fn charCount(self: *Lexer) u8 {
-    var count: u8 = 0;
-
-    for (self.input) |ch| {
-      if (!isWhiteSpace(ch)) {
-        count += 1;
-      }
-    }
-
-    return count;
-  }
-
   fn updatePosition(self: *Lexer, wr: WordRange) void {
     self.position = wr.start;
     self.readPosition = wr.end;
   }
 
-  fn initKeywords(allocator: *std.mem.Allocator) !std.AutoHashMap(u8, u8) {
-    var map = std.AutoHashMap(u8, u8).init(allocator);
-
-    for (token.TokenKeywords) |keyword| {
-      try map.put(1, 0);
-    }
-
-    return map;
-  }
-
-  fn init(self: *Lexer, input: []const u8) !void {
+  fn init(self: *Lexer, allocator: *std.mem.Allocator, input: []const u8) !void {
+    self.allocator = allocator;
     self.input = input;
     self.position = 0;
     self.readPosition = 0;
@@ -165,7 +151,7 @@ const Lexer = struct {
     var l = try allocator.create(Lexer);
 
     // Initialisation
-    try l.init(input);
+    try l.init(allocator, input);
 
     return l;
   }
@@ -197,6 +183,7 @@ test "Verifies token types\n" {
     \\ };
     \\
     \\ let result = add(five, ten);
+    \\ <>!-/*
   ;
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -212,7 +199,7 @@ test "Verifies token types\n" {
   };
   const testCases = [_]expectedType {
     .{
-      .expectedType = TokenMap.let,
+      .expectedType = TokenMap._let,
       .expectedLiteral = "let"
     },
     .{
@@ -232,7 +219,7 @@ test "Verifies token types\n" {
       .expectedLiteral = ";"
     },
     .{
-      .expectedType = TokenMap.let,
+      .expectedType = TokenMap._let,
       .expectedLiteral = "let"
     },
     .{
@@ -252,7 +239,7 @@ test "Verifies token types\n" {
       .expectedLiteral = ";"
     },
     .{
-      .expectedType = TokenMap.let,
+      .expectedType = TokenMap._let,
       .expectedLiteral = "let"
     },
     .{
@@ -264,7 +251,7 @@ test "Verifies token types\n" {
       .expectedLiteral = "="
     },
     .{
-      .expectedType = TokenMap.function,
+      .expectedType = TokenMap._function,
       .expectedLiteral = "function"
     },
     .{
@@ -316,9 +303,73 @@ test "Verifies token types\n" {
       .expectedLiteral = ";"
     },
     .{
+      .expectedType = TokenMap._let,
+      .expectedLiteral = "let"
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "result"
+    },
+    .{
+      .expectedType = TokenMap.assign,
+      .expectedLiteral = "="
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "add"
+    },
+    .{
+      .expectedType = TokenMap.lparen,
+      .expectedLiteral = "("
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "five"
+    },
+    .{
+      .expectedType = TokenMap.comma,
+      .expectedLiteral = ","
+    },
+    .{
+      .expectedType = TokenMap.ident,
+      .expectedLiteral = "ten"
+    },
+    .{
+      .expectedType = TokenMap.rparen,
+      .expectedLiteral = ")"
+    },
+    .{
+      .expectedType = TokenMap.semicolon,
+      .expectedLiteral = ";"
+    },
+    .{
+      .expectedType = TokenMap.lt,
+      .expectedLiteral = "<"
+    },
+    .{
+      .expectedType = TokenMap.gt,
+      .expectedLiteral = ">"
+    },
+    .{
+      .expectedType = TokenMap.bang,
+      .expectedLiteral = "!"
+    },
+    .{
+      .expectedType = TokenMap.minus,
+      .expectedLiteral = "-"
+    },
+    .{
+      .expectedType = TokenMap.slash,
+      .expectedLiteral = "/"
+    },
+    .{
+      .expectedType = TokenMap.asterisk,
+      .expectedLiteral = "*"
+    },
+    .{
       .expectedType = TokenMap.eof,
       .expectedLiteral = ""
-    },
+    }
   };
 
   for (testCases) |field| {
