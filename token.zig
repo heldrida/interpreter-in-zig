@@ -25,3 +25,30 @@ pub const TokenMap = enum(u8) {
   function = 70,
   let = 76
 };
+
+// Keywords
+pub const Let = "let";
+pub const Fn = "fn";
+
+pub const TokenKeywords = [_][]const u8{ Let[0..], Fn[0..] };
+
+test "iterate keywords" {
+  const expectedType = struct {
+      expectedType: TokenMap,
+      expectedLiteral: []const u8
+  };
+  const testCases = [_]expectedType {
+    .{
+      .expectedType = TokenMap.let,
+      .expectedLiteral = "let"
+    },
+    .{
+      .expectedType = TokenMap.function,
+      .expectedLiteral = "fn"
+    }
+  };
+
+  for (testCases) |value, i| {
+    std.testing.expect(std.mem.eql(u8, value.expectedLiteral, TokenKeywords[i]));
+  }
+}
