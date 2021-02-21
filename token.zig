@@ -14,6 +14,12 @@ pub const TokenMap = enum(u8) {
   // Operators
   assign = 61,
   plus = 43,
+  minus = 45,
+  bang = 33,
+  asterisk = 42,
+  slash = 47,
+  lt = 60,
+  gt = 62,
   // Delimiters
   comma = 44,
   semicolon = 59,
@@ -22,12 +28,12 @@ pub const TokenMap = enum(u8) {
   lbrace = 123,
   rbrace = 125,
   // Keywords
-  function = 70,
-  let = 76
+  _function = 70,
+  _let = 76
 };
 
 // pub const TokenKeywords = [_][]const u8{ Let[0..], Fn[0..] };
-pub const TokenKeywords = [2]TokenMap { TokenMap.function, TokenMap.let };
+pub const TokenKeywords = [2]TokenMap { TokenMap._function, TokenMap._let };
 
 test "iterate keywords" {
   const expectedType = struct {
@@ -36,11 +42,11 @@ test "iterate keywords" {
   };
   const testCases = [_]expectedType {
     .{
-      .expectedType = TokenMap.function,
+      .expectedType = TokenMap._function,
       .expectedLiteral = "function"
     },
     .{
-      .expectedType = TokenMap.let,
+      .expectedType = TokenMap._let,
       .expectedLiteral = "let"
     }
   };
