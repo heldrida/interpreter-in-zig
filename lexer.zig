@@ -21,8 +21,6 @@ const Lexer = struct {
   ch: TokenMap,
   // current literal
   literal: []const u8,
-  // keywords
-  keywords: std.StringHashMap([]const u8),
 
   // Checks if we reached end of input
   // if so sets to 0 (ASCII code for "NUL" char)
@@ -121,12 +119,8 @@ const Lexer = struct {
   fn literalToChar(self: *Lexer, literal: []const u8) TokenMap {
     var ch: TokenMap = undefined;
 
-    if (self.keywords.contains(literal)) {
-      if (std.mem.eql(u8, literal, "let")) {
-        ch = TokenMap.let;
-      } else if (std.mem.eql(u8, literal, "fn")) {
-        ch = TokenMap.function;
-      }
+    if (std.meta.stringToEnum(TokenMap, self.literal)) |char| {
+      ch = char;
     } else {
       ch = TokenMap.ident;
     }
@@ -151,28 +145,27 @@ const Lexer = struct {
     self.readPosition = wr.end;
   }
 
-  fn initKeywords(allocator: *std.mem.Allocator) !std.StringHashMap([]const u8) {
-    var map = std.StringHashMap([]const u8).init(allocator);
+  fn initKeywords(allocator: *std.mem.Allocator) !std.AutoHashMap(u8, u8) {
+    var map = std.AutoHashMap(u8, u8).init(allocator);
 
     for (token.TokenKeywords) |keyword| {
-      try map.put(keyword, "");
+      try map.put(1, 0);
     }
 
     return map;
   }
 
-  fn init(self: *Lexer, allocator: *std.mem.Allocator, input: []const u8) !void {
+  fn init(self: *Lexer, input: []const u8) !void {
     self.input = input;
     self.position = 0;
     self.readPosition = 0;
-    self.keywords = try initKeywords(allocator);
   }
 
   fn create(allocator: *std.mem.Allocator, input: []const u8) !*Lexer {
     var l = try allocator.create(Lexer);
 
     // Initialisation
-    try l.init(allocator, input);
+    try l.init(input);
 
     return l;
   }
@@ -199,7 +192,7 @@ test "Verifies token types\n" {
   const input: []const u8 =
     \\ let five = 5;
     \\ let three = 3;
-    \\ let add = fn(x, y) {
+    \\ let add = function(x, y) {
     \\   x + y;
     \\ };
     \\
@@ -272,7 +265,7 @@ test "Verifies token types\n" {
     },
     .{
       .expectedType = TokenMap.function,
-      .expectedLiteral = "fn"
+      .expectedLiteral = "function"
     },
     .{
       .expectedType = TokenMap.lparen,
