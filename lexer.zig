@@ -179,7 +179,7 @@ test "Verifies token types\n" {
     \\ let five = 5;
     \\ let three = 3;
     \\ let add = function(x, y) {
-    \\   x + y;
+    \\   return x + y;
     \\ };
     \\
     \\ let result = add(five, ten);
@@ -277,6 +277,10 @@ test "Verifies token types\n" {
     .{
       .expectedType = TokenMap.lbrace,
       .expectedLiteral = "{"
+    },
+    .{
+      .expectedType = TokenMap._return,
+      .expectedLiteral = "return"
     },
     .{
       .expectedType = TokenMap.ident,
