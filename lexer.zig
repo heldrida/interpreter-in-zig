@@ -21,7 +21,9 @@ const Lexer = struct {
   ch: TokenMap,
   // current literal
   literal: []const u8,
-  
+  // keywords
+  keywords: std.StringHashMap([]const u8),
+
   // Checks if we reached end of input
   // if so sets to 0 (ASCII code for "NUL" char)
   // otherwise, sets `l.ch` to the next char
@@ -43,7 +45,7 @@ const Lexer = struct {
       self.literal = self.input[wr.start..wr.end];
 
       // Update character
-      self.ch = literalToChar(self.literal);
+      self.ch = self.literalToChar(self.literal);      
     } else if (isDigit(self.input[self.readPosition])) {
       // Update character
       self.ch = TokenMap.int;
@@ -116,13 +118,15 @@ const Lexer = struct {
     return tk;
   }
 
-  fn literalToChar(literal: []const u8) TokenMap {
+  fn literalToChar(self: *Lexer, literal: []const u8) TokenMap {
     var ch: TokenMap = undefined;
 
-    if (std.mem.eql(u8, literal, "let")) {
-      ch = TokenMap.let;
-    } else if (std.mem.eql(u8, literal, "fn")) {
-      ch = TokenMap.function;
+    if (self.keywords.contains(literal)) {
+      if (std.mem.eql(u8, literal, "let")) {
+        ch = TokenMap.let;
+      } else if (std.mem.eql(u8, literal, "fn")) {
+        ch = TokenMap.function;
+      }
     } else {
       ch = TokenMap.ident;
     }
@@ -147,17 +151,28 @@ const Lexer = struct {
     self.readPosition = wr.end;
   }
 
-  fn init(self: *Lexer, input: []const u8) void {
+  fn initKeywords(allocator: *std.mem.Allocator) !std.StringHashMap([]const u8) {
+    var map = std.StringHashMap([]const u8).init(allocator);
+
+    for (token.TokenKeywords) |keyword| {
+      try map.put(keyword, "");
+    }
+
+    return map;
+  }
+
+  fn init(self: *Lexer, allocator: *std.mem.Allocator, input: []const u8) !void {
     self.input = input;
     self.position = 0;
     self.readPosition = 0;
+    self.keywords = try initKeywords(allocator);
   }
 
   fn create(allocator: *std.mem.Allocator, input: []const u8) !*Lexer {
     var l = try allocator.create(Lexer);
 
     // Initialisation
-    l.init(input);
+    try l.init(allocator, input);
 
     return l;
   }
