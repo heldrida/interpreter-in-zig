@@ -29,5 +29,6 @@ pub const TokenMap = enum(u8) {
   rbrace = 125,
   // Keywords
   _function = 70,
-  _let = 76
+  _let = 76,
+  _return = 77
 };
