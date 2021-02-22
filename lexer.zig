@@ -6,7 +6,7 @@ const token = @import("token.zig");
 // Types
 const Token = token.Token;
 const TokenMap = token.TokenMap;
-const WordRange = struct {
+const TokenRange = struct {
   start: u8,
   end: u8
 };
@@ -102,19 +102,19 @@ const Lexer = struct {
     return tk;
   }
   
-  fn getRange(self: *Lexer, startPos: u8, callback: fn(u8) bool) WordRange {
+  fn getRange(self: *Lexer, startPos: u8, callback: fn(u8) bool) TokenRange {
     var i: u8 = startPos;
 
     while (i < self.input.len): (i += 1) {
       if (!callback(self.input[i])) {
-        return WordRange {
+        return TokenRange {
           .start = startPos,
           .end = i
         };
       }
     }
 
-    return WordRange {
+    return TokenRange {
       .start = startPos,
       .end = @intCast(u8, self.input.len)
     };
@@ -168,7 +168,7 @@ const Lexer = struct {
     self.readPosition += 1;
   }
 
-  fn updatePosition(self: *Lexer, wr: WordRange) void {
+  fn updatePosition(self: *Lexer, wr: TokenRange) void {
     self.position = wr.start;
     self.readPosition = wr.end;
   }
