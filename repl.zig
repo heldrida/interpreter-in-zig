@@ -2,8 +2,9 @@ const builtin = @import("builtin");
 const std = @import("std");
 const io = std.io;
 const fmt = std.fmt;
+const Lexer = @import("lexer.zig").Lexer;
 
-pub fn repl() !void {
+pub fn repl(l: *Lexer) !void {
     const stdout = io.getStdOut().writer();
     const stdin = io.getStdIn();
 
@@ -18,17 +19,24 @@ pub fn repl() !void {
         var buf: [50]u8 = undefined;
 
         // Read the user input
-        const cmd = try stdin.read(&buf);
+        // the number of bytes written (if memory serves)
+        const number_of_bytes = try stdin.read(&buf);
 
         // Check the input length
         // considering the buffer size
-        if (cmd == buf.len) {
+        if (number_of_bytes == buf.len) {
             try stdout.print("Oops! The command is quite long, mind shortening?\n", .{});
             continue;
         }
 
-        const line = std.mem.trimRight(u8, buf[0..cmd], "\r\n");
+        // Trim
+        const line = std.mem.trimRight(u8, buf[0..number_of_bytes], "\r\n");
 
-        try stdout.print("{s}\n", .{ line });
+        // Set new input
+        try l.new(line);
+
+        while (l.nextToken()) |tok| {
+          try stdout.print("{s}\n", .{ tok.literal });
+        }
     }
 }
