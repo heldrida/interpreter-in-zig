@@ -189,7 +189,12 @@ test "Verifies token types\n" {
     \\ };
     \\
     \\ let result = add(five, ten);
-    \\ <>!-/*
+    \\ <>!-/*!
+    \\ if (5 < 8) {
+    \\   return true;
+    \\ } else {
+    \\   return false;
+    \\ }
   ;
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -375,6 +380,78 @@ test "Verifies token types\n" {
     .{
       .expectedType = TokenMap.asterisk,
       .expectedLiteral = "*"
+    },
+    .{
+      .expectedType = TokenMap.bang,
+      .expectedLiteral = "!"
+    },
+    .{
+      .expectedType = TokenMap._if,
+      .expectedLiteral = "if"
+    },
+    .{
+      .expectedType = TokenMap.lparen,
+      .expectedLiteral = "("
+    },
+    .{
+      .expectedType = TokenMap.int,
+      .expectedLiteral = "5"
+    },
+    .{
+      .expectedType = TokenMap.lt,
+      .expectedLiteral = "<"
+    },
+    .{
+      .expectedType = TokenMap.int,
+      .expectedLiteral = "8"
+    },
+    .{
+      .expectedType = TokenMap.rparen,
+      .expectedLiteral = ")"
+    },
+    .{
+      .expectedType = TokenMap.lbrace,
+      .expectedLiteral = "{"
+    },
+    .{
+      .expectedType = TokenMap._return,
+      .expectedLiteral = "return"
+    },
+    .{
+      .expectedType = TokenMap._true,
+      .expectedLiteral = "true"
+    },
+    .{
+      .expectedType = TokenMap.semicolon,
+      .expectedLiteral = ";"
+    },
+    .{
+      .expectedType = TokenMap.rbrace,
+      .expectedLiteral = "{"
+    },
+    .{
+      .expectedType = TokenMap._else,
+      .expectedLiteral = "else"
+    },
+    .{
+      .expectedType = TokenMap.lbrace,
+      .expectedLiteral = "{"
+    },
+    .{
+      .expectedType = TokenMap._return,
+      .expectedLiteral = "return"
+    },
+    .{
+      .expectedType = TokenMap._false,
+      .expectedLiteral = "false"
+    },
+    .{
+      .expectedType = TokenMap.semicolon,
+      .expectedLiteral = ";"
+    },
+    .{
+      .expectedType = TokenMap.rbrace,
+      .expectedLiteral = "}"
     },
     .{
       .expectedType = TokenMap.eof,

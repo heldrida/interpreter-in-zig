@@ -30,5 +30,9 @@ pub const TokenMap = enum(u8) {
   // Keywords
   _function = 70,
   _let = 76,
-  _return = 77
+  _return = 77,
+  _if = 78,
+  _true = 79,
+  _false = 80,
+  _else = 81
 };
