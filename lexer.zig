@@ -11,7 +11,7 @@ const TokenRange = struct {
   end: u8
 };
 
-const Lexer = struct {
+pub const Lexer = struct {
   // allocator
   allocator: *std.mem.Allocator,
   // input
@@ -132,8 +132,13 @@ const Lexer = struct {
     return ch == ' ' or ch == '\t' or ch == '\n' or ch == '\r';
   }
 
-  fn nextToken(self: *Lexer) Token {
+  pub fn nextToken(self: *Lexer) ?Token {
     const tk: Token = self.readChar();
+
+    if (tk.type == TokenMap.eof) {
+      return null;
+    }
+
     return tk;
   }
 
@@ -175,12 +180,16 @@ const Lexer = struct {
 
   fn init(self: *Lexer, allocator: *std.mem.Allocator, input: []const u8) !void {
     self.allocator = allocator;
+    try self.new(input);
+  }
+
+  pub fn new(self: *Lexer, input: []const u8) !void {
     self.input = input;
     self.position = 0;
     self.readPosition = 0;
   }
 
-  fn create(allocator: *std.mem.Allocator, input: []const u8) !*Lexer {
+  pub fn create(allocator: *std.mem.Allocator, input: []const u8) !*Lexer {
     var l = try allocator.create(Lexer);
 
     // Initialisation
@@ -520,9 +529,9 @@ test "Verifies token types\n" {
 
   for (testCases) |field| {
     // Get next token
-    const tok = l.nextToken();
-
-    // Assertion
-    expect(tok.type == field.expectedType);
+    if (l.nextToken()) |tok| {
+      // Assertion
+      expect(tok.type == field.expectedType);
+    }
   }
 }
