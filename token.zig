@@ -20,6 +20,8 @@ pub const TokenMap = enum(u8) {
   slash = 47,
   lt = 60,
   gt = 62,
+  eq = 63,
+  neq = 64,
   // Delimiters
   comma = 44,
   semicolon = 59,
