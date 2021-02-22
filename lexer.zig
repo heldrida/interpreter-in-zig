@@ -55,12 +55,10 @@ const Lexer = struct {
       self.literal = self.input[self.readPosition..self.readPosition+1];
 
       // Update positions
-      self.position = self.readPosition;
-      self.readPosition += 1;
+      self.step();
     } else if (isWhiteSpace(self.input[self.readPosition])) {
       // Update positions
-      self.position = self.readPosition;
-      self.readPosition += 1;
+      self.step();
 
       // Skip to next
       return self.readChar();
@@ -71,9 +69,23 @@ const Lexer = struct {
       // Update literal
       self.literal = self.input[self.readPosition..self.readPosition+1];
 
+      // Override peekChar matches
+      if (self.ch == TokenMap.assign and self.peekChar() == TokenMap.assign) {
+        self.ch = TokenMap.eq;
+        self.literal = "==";
+
+        // Update positions
+        self.step();
+      } else if (self.ch == TokenMap.bang and self.peekChar() == TokenMap.assign) {
+        self.ch = TokenMap.neq;
+
+        self.literal = "!=";
+        // Update positions
+        self.step();
+      }
+
       // Update positions
-      self.position = self.readPosition;
-      self.readPosition += 1;
+      self.step();
     }
 
     const tk = Token {
@@ -119,6 +131,16 @@ const Lexer = struct {
     return tk;
   }
 
+  fn peekChar(self: *Lexer) TokenMap {
+    const nextPosition = self.readPosition + 1;
+
+    if (nextPosition >= self.input.len or isLetter(self.input[nextPosition]) or isWhiteSpace(self.input[nextPosition]) or isDigit(self.input[nextPosition])) {
+      return TokenMap.nul;
+    } else {
+      return @intToEnum(TokenMap, self.input[nextPosition]);
+    }
+  }
+
   fn literalToChar(self: *Lexer, literal: []const u8) !TokenMap {
     var ch: TokenMap = undefined;
 
@@ -133,6 +155,11 @@ const Lexer = struct {
     }
 
     return ch;
+  }
+
+  fn step(self: *Lexer) void {
+    self.position = self.readPosition;
+    self.readPosition += 1;
   }
 
   fn updatePosition(self: *Lexer, wr: WordRange) void {
@@ -195,6 +222,9 @@ test "Verifies token types\n" {
     \\ } else {
     \\   return false;
     \\ }
+    \\ 8 == 8
+    \\ 1 != 8
+    // \\ 10 != 9
   ;
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -452,6 +482,30 @@ test "Verifies token types\n" {
     .{
       .expectedType = TokenMap.rbrace,
       .expectedLiteral = "}"
+    },
+    .{
+      .expectedType = TokenMap.int,
+      .expectedLiteral = "8"
+    },
+    .{
+      .expectedType = TokenMap.eq,
+      .expectedLiteral = "=="
+    },
+    .{
+      .expectedType = TokenMap.int,
+      .expectedLiteral = "8"
+    },
+    .{
+      .expectedType = TokenMap.int,
+      .expectedLiteral = "1"
+    },
+    .{
+      .expectedType = TokenMap.neq,
+      .expectedLiteral = "!="
+    },
+    .{
+      .expectedType = TokenMap.int,
+      .expectedLiteral = "8"
     },
     .{
       .expectedType = TokenMap.eof,
