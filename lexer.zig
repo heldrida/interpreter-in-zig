@@ -87,7 +87,7 @@ const Lexer = struct {
   fn getWordRange(self: *Lexer, startPos: u8) WordRange {
     var i: u8 = startPos;
 
-    while (i < startPos + self.input[startPos..].len): (i += 1) {
+    while (i < self.input.len): (i += 1) {
       if (!isLetter(self.input[i])) {
         return WordRange {
           .start = startPos,
@@ -98,7 +98,7 @@ const Lexer = struct {
 
     return WordRange {
       .start = startPos,
-      .end = 0
+      .end = @intCast(u8, self.input.len)
     };
   }
 
@@ -158,7 +158,7 @@ const Lexer = struct {
 };
 
 test "Gets correct word range\n" {
-  const input: []const u8 = "let{let!";
+  const input: []const u8 = "let{let!{return";
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
   defer arena.deinit();
@@ -169,9 +169,15 @@ test "Gets correct word range\n" {
   
   const wrFirst = l.getWordRange(0);
   const wrSecond = l.getWordRange(4);
+  const wrThird = l.getWordRange(9);
 
   expect(wrFirst.start == 0 and wrFirst.end == 3);
   expect(wrSecond.start == 4 and wrSecond.end == 7);
+  expect(wrThird.start == 9 and wrThird.end == 15);
+
+  expect(std.mem.eql(u8, input[wrFirst.start..wrFirst.end], "let"));
+  expect(std.mem.eql(u8, input[wrSecond.start..wrSecond.end], "let"));
+  expect(std.mem.eql(u8, input[wrThird.start..wrThird.end], "return"));
 }
 
 test "Verifies token types\n" {
