@@ -230,7 +230,6 @@ test "Verifies token types\n" {
     \\ }
     \\ 8 == 8
     \\ 10 != 8
-    // \\ 10 != 9
   ;
 
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
