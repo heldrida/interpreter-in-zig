@@ -48,14 +48,20 @@ const Lexer = struct {
       // Update character
       self.ch = self.literalToChar(self.literal) catch TokenMap.nul;
     } else if (isDigit(self.input[self.readPosition])) {
+      // Find the word range
+      const wr = self.getIntRange(self.readPosition);
+
+      // Update positions      
+      self.updatePosition(wr);
+
+      // Update literal
+      self.literal = self.input[wr.start..wr.end];
+
       // Update character
       self.ch = TokenMap.int;
 
-      // Update literal
-      self.literal = self.input[self.readPosition..self.readPosition+1];
-
       // Update positions
-      self.step();
+      // self.step();
     } else if (isWhiteSpace(self.input[self.readPosition])) {
       // Update positions
       self.step();
@@ -101,6 +107,24 @@ const Lexer = struct {
 
     while (i < self.input.len): (i += 1) {
       if (!isLetter(self.input[i])) {
+        return WordRange {
+          .start = startPos,
+          .end = i
+        };
+      }
+    }
+
+    return WordRange {
+      .start = startPos,
+      .end = @intCast(u8, self.input.len)
+    };
+  }
+
+  fn getIntRange(self: *Lexer, startPos: u8) WordRange {
+    var i: u8 = startPos;
+
+    while (i < self.input.len): (i += 1) {
+      if (!isDigit(self.input[i])) {
         return WordRange {
           .start = startPos,
           .end = i
@@ -217,13 +241,13 @@ test "Verifies token types\n" {
     \\
     \\ let result = add(five, ten);
     \\ <>!-/*!
-    \\ if (5 < 8) {
+    \\ if (5 < 10) {
     \\   return true;
     \\ } else {
     \\   return false;
     \\ }
     \\ 8 == 8
-    \\ 1 != 8
+    \\ 10 != 8
     // \\ 10 != 9
   ;
 
@@ -433,7 +457,7 @@ test "Verifies token types\n" {
     },
     .{
       .expectedType = TokenMap.int,
-      .expectedLiteral = "8"
+      .expectedLiteral = "10"
     },
     .{
       .expectedType = TokenMap.rparen,
@@ -497,7 +521,7 @@ test "Verifies token types\n" {
     },
     .{
       .expectedType = TokenMap.int,
-      .expectedLiteral = "1"
+      .expectedLiteral = "10"
     },
     .{
       .expectedType = TokenMap.neq,
