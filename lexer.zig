@@ -37,7 +37,7 @@ const Lexer = struct {
       self.literal = "";
     } else if (isLetter(self.input[self.readPosition])) {
       // Find the word range
-      const wr = self.getWordRange(self.readPosition);
+      const wr = self.getRange(self.readPosition, isLetter);
 
       // Update positions      
       self.updatePosition(wr);
@@ -49,7 +49,7 @@ const Lexer = struct {
       self.ch = self.literalToChar(self.literal) catch TokenMap.nul;
     } else if (isDigit(self.input[self.readPosition])) {
       // Find the word range
-      const wr = self.getIntRange(self.readPosition);
+      const wr = self.getRange(self.readPosition, isDigit);
 
       // Update positions      
       self.updatePosition(wr);
@@ -102,29 +102,11 @@ const Lexer = struct {
     return tk;
   }
   
-  fn getWordRange(self: *Lexer, startPos: u8) WordRange {
+  fn getRange(self: *Lexer, startPos: u8, callback: fn(u8) bool) WordRange {
     var i: u8 = startPos;
 
     while (i < self.input.len): (i += 1) {
-      if (!isLetter(self.input[i])) {
-        return WordRange {
-          .start = startPos,
-          .end = i
-        };
-      }
-    }
-
-    return WordRange {
-      .start = startPos,
-      .end = @intCast(u8, self.input.len)
-    };
-  }
-
-  fn getIntRange(self: *Lexer, startPos: u8) WordRange {
-    var i: u8 = startPos;
-
-    while (i < self.input.len): (i += 1) {
-      if (!isDigit(self.input[i])) {
+      if (!callback(self.input[i])) {
         return WordRange {
           .start = startPos,
           .end = i
@@ -218,9 +200,9 @@ test "Gets correct word range\n" {
 
   var l = try Lexer.create(allocator, input);
   
-  const wrFirst = l.getWordRange(0);
-  const wrSecond = l.getWordRange(4);
-  const wrThird = l.getWordRange(9);
+  const wrFirst = l.getRange(0, Lexer.isLetter);
+  const wrSecond = l.getRange(4, Lexer.isLetter);
+  const wrThird = l.getRange(9, Lexer.isLetter);
 
   expect(wrFirst.start == 0 and wrFirst.end == 3);
   expect(wrSecond.start == 4 and wrSecond.end == 7);
