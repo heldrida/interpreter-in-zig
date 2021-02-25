@@ -135,10 +135,6 @@ pub const Lexer = struct {
   pub fn nextToken(self: *Lexer) ?Token {
     const tk: Token = self.readChar();
 
-    if (tk.type == TokenMap.eof) {
-      return null;
-    }
-
     return tk;
   }
 
