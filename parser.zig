@@ -103,6 +103,8 @@ const Parser = struct {
 
       return true;
     } else {
+      self.peekError(t) catch unreachable;
+
       return false;
     }
   }
@@ -207,4 +209,31 @@ test "Error messages" {
 
   try p.peekError(TokenMap._return);
   std.testing.expectEqualStrings("Expected token to be TokenMap._return, but got TokenMap.eof", p.errors.items[p.errors.items.len-1].items);
+}
+
+test "Input typos" {
+  const input: []const u8 =
+    \\ let five 5;
+    \\ let = 3;
+  ;
+
+  var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+  defer arena.deinit();
+
+  const allocator = &arena.allocator;
+
+  var l = try Lexer.create(allocator, input);
+
+  var p = Parser.init(allocator, l);
+
+  var program = try p.parseProgram();
+
+  const testCases = [_][]const u8 {
+    "Expected token to be TokenMap.assign, but got TokenMap.int",
+    "Expected token to be TokenMap.ident, but got TokenMap.assign"
+  };
+
+  for (p.errors.items) |item, i| {
+    std.testing.expectEqualStrings(testCases[i], p.errors.items[i].items);
+  }
 }
