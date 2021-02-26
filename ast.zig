@@ -9,7 +9,7 @@ const Statements = enum {
   letStatement
 };
 
-const Node = union(Statements) {
+pub const Node = union(Statements) {
   letStatement: LetStatement
 };
 
