@@ -14,11 +14,12 @@ const Parser = struct {
   curToken: Token,
   peekToken: Token,
   program: ast.Program,
+  errors: std.ArrayList(std.ArrayList(u8)),
 
   pub fn nextToken(self: *Parser) void {
     self.curToken = self.peekToken;
 
-    if (self.l.nextToken()) |tok| {
+    if (self.l.nextToken()) |tok| { 
       self.peekToken = tok;
     }
   }
@@ -106,13 +107,24 @@ const Parser = struct {
     }
   }
 
+  fn getErrors(self: *Parser) std.ArrayList([]const u8) {
+    return self.errors;
+  }
+
+  fn peekError(self: *Parser, t: TokenMap) !void {
+    const msg = std.ArrayList(u8).init(self.allocator);
+    try self.errors.append(msg);
+    try std.fmt.format(self.errors.items[self.errors.items.len-1].writer(), "Expected token to be {s}, but got {s}", .{ t, self.peekToken.type });
+  }
+
   pub fn init(allocator: *std.mem.Allocator, l: *Lexer) Parser {
     var p = Parser {
       .allocator = allocator,
       .l = l,
       .curToken = undefined,
       .peekToken = undefined,
-      .program = ast.Program.init(allocator)
+      .program = ast.Program.init(allocator),
+      .errors = std.ArrayList(std.ArrayList(u8)).init(allocator),
     };
 
     // Read two tokens, so curToken and peekToken are both set
@@ -126,8 +138,6 @@ const Parser = struct {
     self.program.statements.deinit();
   }
 };
-
-
 
 test "Let statements" {
   const input: []const u8 =
@@ -148,7 +158,7 @@ test "Let statements" {
   var program = try p.parseProgram();
 
   if (program.statements.items.len != 3) {
-    std.debug.print("Program steatements does not contain 3 statements, has {d}\n", .{ program.statements.items.len });
+    std.debug.print("Program statements does not contain 3 statements, has {d}\n", .{ program.statements.items.len });
   }
 
   const expectedIdentifier = struct { 
@@ -176,4 +186,25 @@ test "Let statements" {
     std.testing.expect(field.expectedType == stmt.node.letStatement.token.type);
     std.testing.expectEqualStrings(field.expectedIdentifier, stmt.node.letStatement.name.value);
   }
+}
+
+test "Error messages" {
+  const input: []const u8 = "";
+
+  var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+  defer arena.deinit();
+
+  const allocator = &arena.allocator;
+
+  var l = try Lexer.create(allocator, input);
+
+  var p = Parser.init(allocator, l);
+
+  var program = try p.parseProgram();
+
+  try p.peekError(TokenMap._function);
+  std.testing.expectEqualStrings("Expected token to be TokenMap._function, but got TokenMap.eof", p.errors.items[p.errors.items.len-1].items);
+
+  try p.peekError(TokenMap._return);
+  std.testing.expectEqualStrings("Expected token to be TokenMap._return, but got TokenMap.eof", p.errors.items[p.errors.items.len-1].items);
 }
