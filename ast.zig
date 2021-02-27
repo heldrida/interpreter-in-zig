@@ -6,11 +6,13 @@ const Token = token.Token;
 const TokenMap = token.TokenMap;
 
 const Statements = enum {
-  letStatement
+  letStatement,
+  returnStatement
 };
 
 pub const Node = union(Statements) {
-  letStatement: LetStatement
+  letStatement: LetStatement,
+  returnStatement: ReturnStatement
 };
 
 pub const Statement = struct {
@@ -19,6 +21,9 @@ pub const Statement = struct {
   pub fn tokenLiteral(self: *Statement) []const u8 {
     switch (self.node) {
       .letStatement => |content| {
+        return content.token.literal;
+      },
+      .returnStatement => |content| {
         return content.token.literal;
       }
     }
@@ -29,7 +34,7 @@ pub const Statement = struct {
   }
 };
 
-const Expression = struct {
+const Expression = struct {  
   pub fn expressionNode() void {
 
   }
@@ -62,6 +67,11 @@ pub const LetStatement = struct {
   }
 };
 
+pub const ReturnStatement = struct {
+  token: Token, // the 'return' token
+  returnValue: Expression
+};
+
 // The Program Node is the root Node of the AST
 // the parser produces
 pub const Program = struct {
@@ -81,7 +91,7 @@ pub const Program = struct {
 
   pub fn tokenLiteral(self: *Program) []const u8 {
     if (self.statements.items.len > 0) {
-      return self.statements.items[0].tokenLiteral();
+      return self.statements.items[self.statements.items.len-1].tokenLiteral();
     } else {
       return "";
     }
@@ -109,6 +119,48 @@ test "Program initialisation" {
       }
     }
   });
-
+  
   std.testing.expectEqualStrings("let", p.tokenLiteral());
+
+  try p.statements.append(Statement {
+    .node = .{
+      .returnStatement = ReturnStatement {
+        .token = Token {
+          .type = TokenMap._return,
+          .literal = "return"
+        },
+        .returnValue = undefined
+      }
+    }
+  });
+
+  std.testing.expectEqualStrings("return", p.tokenLiteral());
+
+  const expectedType = struct {
+    expectedLiteral: []const u8
+  };
+
+  const testCases = [_]expectedType {
+    .{
+      .expectedLiteral = "let"
+    },
+    .{
+      .expectedLiteral = "return"
+    }
+  };
+
+  for (p.statements.items) |stmt, i| {
+    switch (stmt.node) {
+      .letStatement => |content| {
+        testExpectEqlStrings(testCases[i].expectedLiteral, content.token.literal);
+      },
+      .returnStatement => |content| {
+        testExpectEqlStrings(testCases[i].expectedLiteral, content.token.literal);
+      }
+    }
+  }
+}
+
+fn testExpectEqlStrings(a: []const u8, b: []const u8) void {
+  std.testing.expectEqualStrings(a, b);
 }
