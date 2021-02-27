@@ -39,21 +39,31 @@ const Parser = struct {
   pub fn parseStatement(self: *Parser) ?ast.Statement {
     switch (self.curToken.type) {
       ._let => {
-        std.debug.warn("\n It's the let statement \n", .{});
         if (self.parseLetStatement()) |letStatement| {
           return ast.Statement {
             .node = ast.Node {
               .letStatement = letStatement
             }
           };
-        } else {
-          return null;
         }
       },
+
+      ._return => {
+        if (self.parseReturnStatement()) |returnStatement| {
+          return ast.Statement {
+            .node = ast.Node {
+              .returnStatement = returnStatement
+            }
+          };
+        }
+      },
+
       else => {
         return null;
       }
     }
+
+    return null;
   }
 
   pub fn parseLetStatement(self: *Parser) ?ast.LetStatement {
@@ -81,6 +91,24 @@ const Parser = struct {
     if (!self.expectPeek(TokenMap.assign)) {
       return null;
     }
+
+    while (!self.curTokenIs(TokenMap.semicolon)) {
+      self.nextToken();
+    }
+
+    return stmt;
+  }
+
+  pub fn parseReturnStatement(self: *Parser) ?ast.ReturnStatement {
+    var stmt = ast.ReturnStatement {
+      .token = Token {
+        .type = TokenMap._return,
+        .literal = "return"
+      },
+      .returnValue = undefined
+    };
+
+    self.nextToken();
 
     while (!self.curTokenIs(TokenMap.semicolon)) {
       self.nextToken();
@@ -187,6 +215,57 @@ test "Let statements" {
     const stmt = program.statements.items[i];
     std.testing.expect(field.expectedType == stmt.node.letStatement.token.type);
     std.testing.expectEqualStrings(field.expectedIdentifier, stmt.node.letStatement.name.value);
+  }
+}
+
+
+test "Return statements" {
+  const input: []const u8 =
+    \\ return 8;
+    \\ return 2;
+    \\ return 100000000001;
+  ;
+
+  var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+  defer arena.deinit();
+
+  const allocator = &arena.allocator;
+
+  var l = try Lexer.create(allocator, input);
+
+  var p = Parser.init(allocator, l);
+
+  var program = try p.parseProgram();
+
+  if (program.statements.items.len != 3) {
+    std.debug.print("Program statements does not contain 3 statements, has {d}\n", .{ program.statements.items.len });
+  }
+
+  const expectedIdentifier = struct { 
+    expectedType: TokenMap,
+    expectedReturnValue: []const u8
+  };
+  
+  const testCases = [_]expectedIdentifier {
+    .{
+      .expectedType = TokenMap._return,
+      .expectedReturnValue = "8"
+    },
+    .{
+      .expectedType = TokenMap._return,
+      .expectedReturnValue = "2"
+    },
+    .{
+      .expectedType = TokenMap._return,
+      .expectedReturnValue = "100000000001"
+    },
+  };
+
+  for (testCases) |field, i| {
+    const stmt = program.statements.items[i];
+    std.debug.warn("return statement, literal: {s}\n", .{ stmt.node.returnStatement.token.literal });
+    std.testing.expect(field.expectedType == stmt.node.returnStatement.token.type);
+    // std.testing.expectEqualStrings(field.expectedReturnValue, stmt.node.returnStatement.returnValue);
   }
 }
 
