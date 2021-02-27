@@ -190,6 +190,20 @@ test "Let statements" {
   }
 }
 
+fn checkParserErrors(p: *Parser) void {
+  if (p.errors.items.len == 0) {
+    return;
+  }
+
+  std.debug.warn("\n\u{001b}[31m😓 \u{001b}[1mOops! Errors found while parsing!\u{001b}[0m\n", .{});
+
+  for (p.errors.items) |msg, i| {
+    std.debug.warn("💩 {s}\n", .{ p.errors.items[i].items });
+  }
+
+  std.debug.warn("\u{001b}[0m\n", .{});
+}
+
 test "Error messages" {
   const input: []const u8 = "";
 
@@ -227,6 +241,8 @@ test "Input typos" {
   var p = Parser.init(allocator, l);
 
   var program = try p.parseProgram();
+
+  checkParserErrors(&p);
 
   const testCases = [_][]const u8 {
     "Expected token to be TokenMap.assign, but got TokenMap.int",
