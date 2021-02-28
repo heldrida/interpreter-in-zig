@@ -3,6 +3,7 @@ const std = @import("std");
 const io = std.io;
 const fmt = std.fmt;
 const Lexer = @import("lexer.zig").Lexer;
+const TokenMap = @import("token.zig").TokenMap;
 
 pub fn repl(l: *Lexer) !void {
     const stdout = io.getStdOut().writer();
@@ -36,6 +37,7 @@ pub fn repl(l: *Lexer) !void {
         try l.new(line);
 
         while (l.nextToken()) |tok| {
+          if (tok.type == TokenMap.eof) break;
           try stdout.print("{s}\n", .{ tok.literal });
         }
     }
