@@ -37,6 +37,20 @@ pub const Statement = struct {
   pub fn statementNode(self: *Statement) Node {
     self.node;
   }
+
+  pub fn string(self: *Statement) ![]u8 {
+    switch (self.node) {
+      .letStatement => |content| {
+        return try self.node.letStatement.string();
+      },
+      .returnStatement => |content| {
+        return try self.node.returnStatement.string();
+      },
+      .expressionStatement => |content| {
+        return try self.node.expressionStatement.string();
+      }
+    }
+  }
 };
 
 const Expression = struct {  
@@ -72,11 +86,39 @@ pub const LetStatement = struct {
   pub fn tokenLiteral(self: *LetStatement) []const u8 {
     return self.token.literal;
   }
+
+  pub fn string(self: *LetStatement) ![]u8 {
+    const msg = std.ArrayList(u8).init(self.alloc);
+
+    try self.stringBuf.append(msg);
+
+    // TODO: expression value
+    try std.fmt.format(self.stringBuf.items[self.stringBuf.items.len-1].writer(), "{s} {s} = ;", .{ self.tokenLiteral(), self.name.value });
+
+    return self.stringBuf.items[0].toOwnedSlice();
+  }
 };
 
 pub const ReturnStatement = struct {
+  alloc: *std.mem.Allocator,
   token: Token, // the 'return' token
-  returnValue: Expression
+  returnValue: Expression,
+  stringBuf: std.ArrayList(std.ArrayList(u8)),
+
+  pub fn tokenLiteral(self: *ReturnStatement) []const u8 {
+    return self.token.literal;
+  }
+  
+  pub fn string(self: *ReturnStatement) ![]u8 {
+    const msg = std.ArrayList(u8).init(self.alloc);
+
+    try self.stringBuf.append(msg);
+
+    // TODO: expression value
+    try std.fmt.format(self.stringBuf.items[self.stringBuf.items.len-1].writer(), "{s} ;", .{ self.tokenLiteral() });
+
+    return self.stringBuf.items[0].toOwnedSlice();
+  }
 };
 
 pub const ExpressionStatement = struct {
@@ -87,6 +129,10 @@ pub const ExpressionStatement = struct {
 
   pub fn tokenLiteral(self: *ExpressionStatement) []const u8 {
     return self.token.literal;
+  }
+
+  pub fn string(self: *ExpressionStatement) ![]u8 {
+    return "";
   }
 };
 
@@ -125,10 +171,7 @@ pub const Program = struct {
     try self.stringBuf.append(msg);
 
     for (self.statements.items) |stmt, i| {
-      // TODO: statement should have a `.string()`
-      // which computes a key value pair for debugging e.g. let x 1 = value;
-      // in its absence for the moment we use the `.tokenLiteral()`
-      try std.fmt.format(self.stringBuf.items[self.stringBuf.items.len-1].writer(), "{s}", .{ self.statements.items[i].tokenLiteral() });
+      try std.fmt.format(self.stringBuf.items[self.stringBuf.items.len-1].writer(), "{s}", .{ self.statements.items[i].string() });
     }
 
     return self.stringBuf.items[0].toOwnedSlice();
@@ -152,7 +195,13 @@ test "Program.string()" {
           .type = TokenMap._let,
           .literal = "let"
         },
-        .name = undefined,
+        .name = Identifier {
+          .token = Token {
+            .type = TokenMap._let,
+            .literal = "let"
+          },
+          .value = "foobar"
+        },
         .value = undefined,
         .stringBuf = std.ArrayList(std.ArrayList(u8)).init(allocator)
       }
