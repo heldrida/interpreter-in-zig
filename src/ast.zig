@@ -59,9 +59,11 @@ pub const Identifier = struct {
 };
 
 pub const LetStatement = struct {
+  alloc: *std.mem.Allocator,
   token: Token, // the token.LET token 
   name: Identifier,
   value: Expression,
+  stringBuf: std.ArrayList(std.ArrayList(u8)),
 
   pub fn statementNode() void {
 
@@ -145,12 +147,14 @@ test "Program.string()" {
   try p.statements.append(Statement {
     .node = .{
       .letStatement = LetStatement {
+        .alloc = allocator,
         .token = Token {
           .type = TokenMap._let,
           .literal = "let"
         },
         .name = undefined,
         .value = undefined,
+        .stringBuf = std.ArrayList(std.ArrayList(u8)).init(allocator)
       }
     }
   });
@@ -158,16 +162,18 @@ test "Program.string()" {
   try p.statements.append(Statement {
     .node = .{
       .returnStatement = ReturnStatement {
+        .alloc = allocator,
         .token = Token {
           .type = TokenMap._return,
           .literal = "return"
         },
-        .returnValue = undefined
+        .returnValue = undefined,
+        .stringBuf = std.ArrayList(std.ArrayList(u8)).init(allocator)
       }
     }
   });
 
-  testExpectEqlStrings("letreturn", try p.string());
+  testExpectEqlStrings("let foobar = ;return ;", try p.string());
 }
 
 test "Program initialisation" {
@@ -182,12 +188,14 @@ test "Program initialisation" {
   try p.statements.append(Statement {
     .node = .{
       .letStatement = LetStatement {
+        .alloc = allocator,
         .token = Token {
           .type = TokenMap._let,
           .literal = "let"
         },
         .name = undefined,
         .value = undefined,
+        .stringBuf = std.ArrayList(std.ArrayList(u8)).init(allocator)
       }
     }
   });
@@ -197,11 +205,13 @@ test "Program initialisation" {
   try p.statements.append(Statement {
     .node = .{
       .returnStatement = ReturnStatement {
+        .alloc = allocator,
         .token = Token {
           .type = TokenMap._return,
           .literal = "return"
         },
-        .returnValue = undefined
+        .returnValue = undefined,
+        .stringBuf = std.ArrayList(std.ArrayList(u8)).init(allocator)
       }
     }
   });

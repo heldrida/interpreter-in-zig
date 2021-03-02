@@ -68,6 +68,7 @@ const Parser = struct {
 
   pub fn parseLetStatement(self: *Parser) ?ast.LetStatement {
     var stmt = ast.LetStatement {
+      .alloc = self.allocator,
       .token = Token {
         .type = self.curToken.type,
         .literal = self.curToken.literal
@@ -101,6 +102,7 @@ const Parser = struct {
 
   pub fn parseReturnStatement(self: *Parser) ?ast.ReturnStatement {
     var stmt = ast.ReturnStatement {
+      .alloc = self.allocator,
       .token = Token {
         .type = TokenMap._return,
         .literal = "return"
