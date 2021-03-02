@@ -7,12 +7,14 @@ const TokenMap = token.TokenMap;
 
 const Statements = enum {
   letStatement,
-  returnStatement
+  returnStatement,
+  expressionStatement
 };
 
 pub const Node = union(Statements) {
   letStatement: LetStatement,
-  returnStatement: ReturnStatement
+  returnStatement: ReturnStatement,
+  expressionStatement: ExpressionStatement
 };
 
 pub const Statement = struct {
@@ -24,6 +26,9 @@ pub const Statement = struct {
         return content.token.literal;
       },
       .returnStatement => |content| {
+        return content.token.literal;
+      },
+      .expressionStatement => |content| {
         return content.token.literal;
       }
     }
@@ -72,6 +77,17 @@ pub const ReturnStatement = struct {
   returnValue: Expression
 };
 
+pub const ExpressionStatement = struct {
+  token: Token,
+  expression: Expression,
+
+  pub fn statementNode() void {}
+
+  pub fn tokenLiteral(self: *ExpressionStatement) []const u8 {
+    return self.token.literal;
+  }
+};
+
 // The Program Node is the root Node of the AST
 // the parser produces
 pub const Program = struct {
@@ -95,7 +111,7 @@ pub const Program = struct {
     } else {
       return "";
     }
-  }  
+  }
 };
 
 test "Program initialisation" {
@@ -156,6 +172,9 @@ test "Program initialisation" {
       },
       .returnStatement => |content| {
         testExpectEqlStrings(testCases[i].expectedLiteral, content.token.literal);
+      },
+      .expressionStatement => |content| {
+        // TODO
       }
     }
   }
