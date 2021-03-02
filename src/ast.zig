@@ -91,11 +91,15 @@ pub const ExpressionStatement = struct {
 // The Program Node is the root Node of the AST
 // the parser produces
 pub const Program = struct {
+  alloc: *std.mem.Allocator,
   statements: std.ArrayList(Statement),
+  stringBuf: std.ArrayList(std.ArrayList(u8)),
 
   pub fn init(allocator: *std.mem.Allocator) Program {
     const p = Program {
-      .statements = std.ArrayList(Statement).init(allocator)
+      .statements = std.ArrayList(Statement).init(allocator),
+      .stringBuf = std.ArrayList(std.ArrayList(u8)).init(allocator),
+      .alloc = allocator
     };
 
     return p;
@@ -112,7 +116,59 @@ pub const Program = struct {
       return "";
     }
   }
+
+  pub fn string(self: *Program) ![]u8 {
+    const msg = std.ArrayList(u8).init(self.alloc);
+
+    try self.stringBuf.append(msg);
+
+    for (self.statements.items) |stmt, i| {
+      // TODO: statement should have a `.string()`
+      // which computes a key value pair for debugging e.g. let x 1 = value;
+      // in its absence for the moment we use the `.tokenLiteral()`
+      try std.fmt.format(self.stringBuf.items[self.stringBuf.items.len-1].writer(), "{s}", .{ self.statements.items[i].tokenLiteral() });
+    }
+
+    return self.stringBuf.items[0].toOwnedSlice();
+  }
 };
+
+test "Program.string()" {
+  var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+  defer arena.deinit();
+
+  const allocator = &arena.allocator;
+
+  var p = Program.init(allocator);
+  defer p.deinit();
+
+  try p.statements.append(Statement {
+    .node = .{
+      .letStatement = LetStatement {
+        .token = Token {
+          .type = TokenMap._let,
+          .literal = "let"
+        },
+        .name = undefined,
+        .value = undefined,
+      }
+    }
+  });
+
+  try p.statements.append(Statement {
+    .node = .{
+      .returnStatement = ReturnStatement {
+        .token = Token {
+          .type = TokenMap._return,
+          .literal = "return"
+        },
+        .returnValue = undefined
+      }
+    }
+  });
+
+  testExpectEqlStrings("letreturn", try p.string());
+}
 
 test "Program initialisation" {
   var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
