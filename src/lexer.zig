@@ -28,7 +28,7 @@ pub const Lexer = struct {
   // Checks if we reached end of input
   // if so sets to 0 (ASCII code for "NUL" char)
   // otherwise, sets `l.ch` to the next char
-  fn readChar(self: *Lexer) Token {
+  fn readChar(self: *@This()) Token {
     if (self.readPosition >= self.input.len) {
       // Update character (set EOF)
       self.ch = TokenMap.eof;
@@ -102,7 +102,7 @@ pub const Lexer = struct {
     return tk;
   }
   
-  fn getRange(self: *Lexer, startPos: u8, callback: fn(u8) bool) TokenRange {
+  fn getRange(self: *@This(), startPos: u8, callback: fn(u8) bool) TokenRange {
     var i: u8 = startPos;
 
     while (i < self.input.len): (i += 1) {
@@ -132,13 +132,13 @@ pub const Lexer = struct {
     return ch == ' ' or ch == '\t' or ch == '\n' or ch == '\r';
   }
 
-  pub fn nextToken(self: *Lexer) ?Token {
+  pub fn nextToken(self: *@This()) ?Token {
     const tk: Token = self.readChar();
 
     return tk;
   }
 
-  fn peekChar(self: *Lexer) TokenMap {
+  fn peekChar(self: *@This()) TokenMap {
     const nextPosition = self.readPosition + 1;
 
     if (nextPosition >= self.input.len or isLetter(self.input[nextPosition]) or isWhiteSpace(self.input[nextPosition]) or isDigit(self.input[nextPosition])) {
@@ -148,7 +148,7 @@ pub const Lexer = struct {
     }
   }
 
-  fn literalToChar(self: *Lexer, literal: []const u8) !TokenMap {
+  fn literalToChar(self: *@This(), literal: []const u8) !TokenMap {
     var ch: TokenMap = undefined;
 
     // Some keywords might clash with Zig syntax
@@ -164,22 +164,22 @@ pub const Lexer = struct {
     return ch;
   }
 
-  fn step(self: *Lexer) void {
+  fn step(self: *@This()) void {
     self.position = self.readPosition;
     self.readPosition += 1;
   }
 
-  fn updatePosition(self: *Lexer, wr: TokenRange) void {
+  fn updatePosition(self: *@This(), wr: TokenRange) void {
     self.position = wr.start;
     self.readPosition = wr.end;
   }
 
-  fn init(self: *Lexer, allocator: *std.mem.Allocator, input: []const u8) !void {
+  fn init(self: *@This(), allocator: *std.mem.Allocator, input: []const u8) !void {
     self.allocator = allocator;
     try self.new(input);
   }
 
-  pub fn new(self: *Lexer, input: []const u8) !void {
+  pub fn new(self: *@This(), input: []const u8) !void {
     self.input = input;
     self.position = 0;
     self.readPosition = 0;
