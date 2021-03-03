@@ -20,7 +20,7 @@ pub const Node = union(Statements) {
 pub const Statement = struct {
   node: Node,
 
-  pub fn tokenLiteral(self: *Statement) []const u8 {
+  pub fn tokenLiteral(self: *@This()) []const u8 {
     switch (self.node) {
       .letStatement => |content| {
         return content.token.literal;
@@ -34,11 +34,11 @@ pub const Statement = struct {
     }
   }
 
-  pub fn statementNode(self: *Statement) Node {
+  pub fn statementNode(self: *@This()) Node {
     self.node;
   }
 
-  pub fn string(self: *Statement) ![]u8 {
+  pub fn string(self: *@This()) ![]u8 {
     switch (self.node) {
       .letStatement => |content| {
         return try self.node.letStatement.string();
@@ -67,7 +67,7 @@ pub const Identifier = struct {
 
   }
 
-  pub fn tokenLiteral(self: *LetStatement) []const u8 {
+  pub fn tokenLiteral(self: *@This()) []const u8 {
     return self.token.Literal;
   }
 };
@@ -83,11 +83,11 @@ pub const LetStatement = struct {
 
   }
 
-  pub fn tokenLiteral(self: *LetStatement) []const u8 {
+  pub fn tokenLiteral(self: *@This()) []const u8 {
     return self.token.literal;
   }
 
-  pub fn string(self: *LetStatement) ![]u8 {
+  pub fn string(self: *@This()) ![]u8 {
     const msg = std.ArrayList(u8).init(self.alloc);
 
     try self.stringBuf.append(msg);
@@ -105,11 +105,11 @@ pub const ReturnStatement = struct {
   returnValue: Expression,
   stringBuf: std.ArrayList(std.ArrayList(u8)),
 
-  pub fn tokenLiteral(self: *ReturnStatement) []const u8 {
+  pub fn tokenLiteral(self: *@This()) []const u8 {
     return self.token.literal;
   }
   
-  pub fn string(self: *ReturnStatement) ![]u8 {
+  pub fn string(self: *@This()) ![]u8 {
     const msg = std.ArrayList(u8).init(self.alloc);
 
     try self.stringBuf.append(msg);
@@ -127,11 +127,11 @@ pub const ExpressionStatement = struct {
 
   pub fn statementNode() void {}
 
-  pub fn tokenLiteral(self: *ExpressionStatement) []const u8 {
+  pub fn tokenLiteral(self: *@This()) []const u8 {
     return self.token.literal;
   }
 
-  pub fn string(self: *ExpressionStatement) ![]u8 {
+  pub fn string(self: *@This()) ![]u8 {
     return "";
   }
 };
@@ -153,11 +153,11 @@ pub const Program = struct {
     return p;
   }
 
-  pub fn deinit(self: *Program) void {
+  pub fn deinit(self: *@This()) void {
     self.statements.deinit();
   }
 
-  pub fn tokenLiteral(self: *Program) []const u8 {
+  pub fn tokenLiteral(self: *@This()) []const u8 {
     if (self.statements.items.len > 0) {
       return self.statements.items[self.statements.items.len-1].tokenLiteral();
     } else {
@@ -165,7 +165,7 @@ pub const Program = struct {
     }
   }
 
-  pub fn string(self: *Program) ![]u8 {
+  pub fn string(self: *@This()) ![]u8 {
     const msg = std.ArrayList(u8).init(self.alloc);
 
     try self.stringBuf.append(msg);
