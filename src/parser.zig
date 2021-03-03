@@ -74,7 +74,8 @@ const Parser = struct {
         .literal = self.curToken.literal
       },
       .name = undefined,
-      .value = undefined
+      .value = undefined,
+      .stringBuf = std.ArrayList(std.ArrayList(u8)).init(self.allocator)
     };
 
     if (!self.expectPeek(TokenMap.ident)) {
@@ -107,7 +108,8 @@ const Parser = struct {
         .type = TokenMap._return,
         .literal = "return"
       },
-      .returnValue = undefined
+      .returnValue = undefined,
+      .stringBuf = std.ArrayList(std.ArrayList(u8)).init(self.allocator)
     };
 
     self.nextToken();
