@@ -53,9 +53,16 @@ pub const Statement = struct {
   }
 };
 
-const Expression = struct {  
+const Expression = struct {
+  token: Token, // the token.IDENT token
+  value: []const u8,
+
   pub fn expressionNode() void {
 
+  }
+
+  pub fn string(self: *@This()) []u8 {
+    return "";
   }
 };
 
@@ -69,6 +76,10 @@ pub const Identifier = struct {
 
   pub fn tokenLiteral(self: *@This()) []const u8 {
     return self.token.Literal;
+  }
+
+  pub fn string(self: *@This()) []const u8 {
+    return self.value;
   }
 };
 
@@ -93,7 +104,7 @@ pub const LetStatement = struct {
     try self.stringBuf.append(msg);
 
     // TODO: expression value
-    try std.fmt.format(self.stringBuf.items[self.stringBuf.items.len-1].writer(), "{s} {s} = ;", .{ self.tokenLiteral(), self.name.value });
+    try std.fmt.format(self.stringBuf.items[self.stringBuf.items.len-1].writer(), "{s} {s} = {s};", .{ self.tokenLiteral(), self.name.value, self.value.value });
 
     return self.stringBuf.items[0].toOwnedSlice();
   }
@@ -122,8 +133,10 @@ pub const ReturnStatement = struct {
 };
 
 pub const ExpressionStatement = struct {
+  alloc: *std.mem.Allocator,
   token: Token,
   expression: Expression,
+  stringBuf: std.ArrayList(std.ArrayList(u8)),
 
   pub fn statementNode() void {}
 
@@ -132,6 +145,10 @@ pub const ExpressionStatement = struct {
   }
 
   pub fn string(self: *@This()) ![]u8 {
+    // if (self.expression != null) {
+    //   return self.expression.string();
+    // }
+
     return "";
   }
 };
@@ -202,7 +219,13 @@ test "Program.string()" {
           },
           .value = "foobar"
         },
-        .value = undefined,
+        .value = Expression {
+          .token = Token {
+            .type = TokenMap.ident,
+            .literal = "xoxoxo"
+          },
+          .value = "xoxoxo"
+        },
         .stringBuf = std.ArrayList(std.ArrayList(u8)).init(allocator)
       }
     }
@@ -222,7 +245,7 @@ test "Program.string()" {
     }
   });
 
-  testExpectEqlStrings("let foobar = ;return ;", try p.string());
+  testExpectEqlStrings("let foobar = xoxoxo;return ;", try p.string());
 }
 
 test "Program initialisation" {
@@ -290,6 +313,7 @@ test "Program initialisation" {
       },
       .expressionStatement => |content| {
         // TODO
+        testExpectEqlStrings(testCases[i].expectedLiteral, content.token.literal);
       }
     }
   }
