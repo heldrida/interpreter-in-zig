@@ -16,7 +16,7 @@ const Parser = struct {
   program: ast.Program,
   errors: std.ArrayList(std.ArrayList(u8)),
 
-  pub fn nextToken(self: *Parser) void {
+  pub fn nextToken(self: *@This()) void {
     self.curToken = self.peekToken;
 
     if (self.l.nextToken()) |tok| { 
@@ -24,7 +24,7 @@ const Parser = struct {
     }
   }
 
-  pub fn parseProgram(self: *Parser) !ast.Program {
+  pub fn parseProgram(self: *@This()) !ast.Program {
     while (self.curToken.type != TokenMap.eof) {
       if (self.parseStatement()) |stmt| {
         try self.program.statements.append(stmt);
@@ -36,7 +36,7 @@ const Parser = struct {
     return self.program;
   }
 
-  pub fn parseStatement(self: *Parser) ?ast.Statement {
+  pub fn parseStatement(self: *@This()) ?ast.Statement {
     switch (self.curToken.type) {
       ._let => {
         if (self.parseLetStatement()) |letStatement| {
@@ -66,7 +66,7 @@ const Parser = struct {
     return null;
   }
 
-  pub fn parseLetStatement(self: *Parser) ?ast.LetStatement {
+  pub fn parseLetStatement(self: *@This()) ?ast.LetStatement {
     var stmt = ast.LetStatement {
       .alloc = self.allocator,
       .token = Token {
@@ -101,7 +101,7 @@ const Parser = struct {
     return stmt;
   }
 
-  pub fn parseReturnStatement(self: *Parser) ?ast.ReturnStatement {
+  pub fn parseReturnStatement(self: *@This()) ?ast.ReturnStatement {
     var stmt = ast.ReturnStatement {
       .alloc = self.allocator,
       .token = Token {
@@ -121,15 +121,15 @@ const Parser = struct {
     return stmt;
   }
 
-  pub fn curTokenIs(self: *Parser, t: TokenMap) bool {
+  pub fn curTokenIs(self: *@This(), t: TokenMap) bool {
     return self.curToken.type == t;
   }
 
-  pub fn peekTokenIs(self: *Parser, t: TokenMap) bool {
+  pub fn peekTokenIs(self: *@This(), t: TokenMap) bool {
     return self.peekToken.type == t;
   }
 
-  pub fn expectPeek(self: *Parser, t: TokenMap) bool {
+  pub fn expectPeek(self: *@This(), t: TokenMap) bool {
     if (self.peekTokenIs(t)) {
       self.nextToken();
 
@@ -141,11 +141,11 @@ const Parser = struct {
     }
   }
 
-  fn getErrors(self: *Parser) std.ArrayList([]const u8) {
+  fn getErrors(self: *@This()) std.ArrayList([]const u8) {
     return self.errors;
   }
 
-  fn peekError(self: *Parser, t: TokenMap) !void {
+  fn peekError(self: *@This(), t: TokenMap) !void {
     const msg = std.ArrayList(u8).init(self.allocator);
     try self.errors.append(msg);
     try std.fmt.format(self.errors.items[self.errors.items.len-1].writer(), "Expected token to be {s}, but got {s}", .{ t, self.peekToken.type });
@@ -168,7 +168,7 @@ const Parser = struct {
     return p;
   }
 
-  pub fn deinit(self: *Parser) void {
+  pub fn deinit(self: *@This()) void {
     self.program.statements.deinit();
   }
 };
